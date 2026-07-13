@@ -32,6 +32,7 @@ const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_ROWS = 20_000;
 const acceptedMimeTypes = new Set([
   "text/csv",
+  "text/plain",
   "application/csv",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -48,6 +49,12 @@ function safeFilename(value: string) {
   return basename(value).replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 255) || "importacao";
 }
 
+function detectDelimiter(firstLine: string): string {
+  const semicolonCount = (firstLine.match(/;/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  return commaCount > semicolonCount ? "," : ";";
+}
+
 function parseRows(buffer: Buffer, mimeType: string, filename: string) {
   const isXlsx = mimeType.includes("spreadsheetml") || filename.toLowerCase().endsWith(".xlsx");
   if (isXlsx) {
@@ -57,8 +64,11 @@ function parseRows(buffer: Buffer, mimeType: string, filename: string) {
     if (!firstSheet) throw new TRPCError({ code: "BAD_REQUEST", message: "A planilha não possui uma aba legível." });
     return XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: "", raw: false });
   }
-  if (buffer.includes(0)) throw new TRPCError({ code: "BAD_REQUEST", message: "O arquivo CSV contém dados binários inválidos." });
-  return parseCsv(buffer.toString("utf8"), { columns: true, skip_empty_lines: true, bom: true, relax_column_count: false, trim: true }) as Record<string, unknown>[];
+  if (buffer.includes(0)) throw new TRPCError({ code: "BAD_REQUEST", message: "O arquivo contém dados binários inválidos." });
+  const text = buffer.toString("utf8");
+  const firstLine = text.split(/\r?\n/)[0] || "";
+  const delimiter = detectDelimiter(firstLine);
+  return parseCsv(text, { columns: true, skip_empty_lines: true, bom: true, relax_column_count: false, trim: true, delimiter }) as Record<string, unknown>[];
 }
 
 function parseDebtAmount(value: string) {
