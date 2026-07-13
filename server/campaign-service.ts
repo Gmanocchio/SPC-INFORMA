@@ -164,7 +164,11 @@ async function resolveCampaignOrganization(actor: DomainActor, requested?: numbe
 async function assertCreditorAndTemplate(organizationId: number, creditorOrganizationId: number, templateId: number, channel: Channel, isSpc: boolean) {
   const db = await requireDb();
   const [creditor] = await db.select({ id: organizations.id, parentOrganizationId: organizations.parentOrganizationId, type: organizations.type, status: organizations.status }).from(organizations).where(eq(organizations.id, creditorOrganizationId)).limit(1);
-  if (!creditor || creditor.type !== "CREDITOR" || creditor.status !== "ACTIVE" || (!isSpc && creditor.parentOrganizationId !== organizationId)) {
+  if (!creditor || creditor.type !== "CREDITOR" || creditor.status !== "ACTIVE") {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Credor inválido ou fora do escopo da organização." });
+  }
+  // Se não é SPC Admin, valida se o credor pertence à organização do usuário
+  if (!isSpc && creditor.id !== organizationId && creditor.parentOrganizationId !== organizationId) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Credor inválido ou fora do escopo da organização." });
   }
   const [template] = await db.select().from(messageTemplates).where(and(eq(messageTemplates.id, templateId), eq(messageTemplates.status, "ACTIVE"), eq(messageTemplates.channel, channel))).limit(1);
