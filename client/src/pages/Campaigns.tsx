@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
   CheckCircle2,
@@ -103,12 +103,20 @@ export default function Campaigns() {
   const options = trpc.campaigns.options.useQuery(undefined, { refetchOnMount: "always" });
   const layout = trpc.campaigns.layout.useQuery({ channel: form.channel });
   const isSpc = identity?.user.role === "SPC_ADMIN";
+  const isCreditor = identity?.organization?.type === "CREDITOR";
   const ownerId = isSpc ? Number(form.organizationId) || undefined : identity?.user.organizationId;
   const owners = options.data?.owners ?? [];
   const creditors = useMemo(
     () => creditorsForCampaignOwner(owners, options.data?.creditors ?? [], String(ownerId ?? ""), isSpc),
     [creditorsForCampaignOwner, isSpc, options.data?.creditors, ownerId, owners],
   );
+
+  // Se o usuário é um credor, pré-seleciona seu próprio credor
+  useEffect(() => {
+    if (isCreditor && identity?.user.organizationId && !form.creditorOrganizationId) {
+      setForm(current => ({ ...current, creditorOrganizationId: String(identity.user.organizationId) }));
+    }
+  }, [isCreditor, identity?.user.organizationId, form.creditorOrganizationId]);
 
   const importCampaign = trpc.campaigns.import.useMutation({
     onSuccess: async result => {
@@ -314,7 +322,7 @@ export default function Campaigns() {
                   <Select
                     value={form.creditorOrganizationId}
                     onValueChange={value => setForm({ ...form, creditorOrganizationId: value })}
-                    disabled={!ownerId || options.isFetching}
+                    disabled={!ownerId || options.isFetching || (isCreditor && !!form.creditorOrganizationId)}
                   >
                     <SelectTrigger><SelectValue placeholder={options.isFetching ? "Atualizando credores…" : "Selecione"} /></SelectTrigger>
                     <SelectContent>
