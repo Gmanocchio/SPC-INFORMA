@@ -1,28 +1,32 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
+import { getAuthenticatedSession } from "../auth-service";
+
+type AuthenticatedIdentity = Awaited<ReturnType<typeof getAuthenticatedSession>>;
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: User | null;
+  user: NonNullable<AuthenticatedIdentity>["user"] | null;
+  organization: NonNullable<AuthenticatedIdentity>["organization"] | null;
+  session: NonNullable<AuthenticatedIdentity>["session"] | null;
 };
 
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
+  let identity: AuthenticatedIdentity = null;
 
   try {
-    user = await sdk.authenticateRequest(opts.req);
+    identity = await getAuthenticatedSession(opts.req);
   } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
+    console.warn("[Auth] Não foi possível validar a sessão atual.");
   }
 
   return {
     req: opts.req,
     res: opts.res,
-    user,
+    user: identity?.user ?? null,
+    organization: identity?.organization ?? null,
+    session: identity?.session ?? null,
   };
 }

@@ -1,0 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { Construction, Plus } from "lucide-react";
+
+export default function ModulePlaceholder({ title, description, actionLabel }: { title: string; description: string; actionLabel?: string }) {
+  return <div className="space-y-7"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold uppercase tracking-[.14em] text-[#0066CC]">Gestão</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#003B7A]">{title}</h1><p className="mt-2 max-w-2xl text-slate-600">{description}</p></div>{actionLabel && <Button disabled className="bg-[#0066CC] font-bold"><Plus className="mr-2 h-4 w-4" /> {actionLabel}</Button>}</div><div className="flex min-h-[28rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-8"><div className="max-w-md text-center"><span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[#0066CC]"><Construction className="h-7 w-7" /></span><h2 className="mt-6 text-xl font-bold text-[#003B7A]">Módulo em preparação</h2><p className="mt-3 leading-7 text-slate-500">A estrutura de acesso já está aplicada. Os fluxos operacionais deste módulo serão conectados nas próximas etapas da implementação.</p></div></div></div>;
+}

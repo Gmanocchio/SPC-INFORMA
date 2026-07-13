@@ -289,26 +289,12 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
-    }
-
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    if (!user.openId) {
+      throw ForbiddenError("OAuth identifier not available for this user");
     }
 
     await db.upsertUser({
@@ -334,17 +320,28 @@ function buildCronUser(
   const now = new Date();
   return {
     id: -1,
+    organizationId: -1,
     openId: userInfo.openId,
     name: userInfo.name || "Manus Scheduled Task",
-    email: null,
-    loginMethod: null,
-    role: "user",
+    cpf: "00000000000",
+    email: "scheduled-task@internal.invalid",
+    phone: null,
+    passwordHash: "disabled",
+    loginMethod: "scheduled-task",
+    role: "SPC_ADMIN",
+    status: "ACTIVE",
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    passwordChangedAt: null,
+    createdByUserId: null,
     createdAt: now,
     updatedAt: now,
     lastSignedIn: now,
+    deletedAt: null,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
-  } as AuthenticatedUser;
+  };
 }
 
 export const sdk = new SDKServer();

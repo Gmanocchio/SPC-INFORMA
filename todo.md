@@ -1,0 +1,67 @@
+# Project TODO
+
+- [x] Preservar o logo oficial do SPC Brasil sem alterações e servi-lo por armazenamento externo do projeto
+- [x] Definir design tokens com a paleta institucional #0066CC, #004A99, #4DA3FF, #00B67A, #FFD54A e #F5F7FA
+- [x] Criar landing page responsiva com benefícios, credibilidade, canais e CTA exato “Acessar Notificadora”
+- [x] Criar arquitetura de navegação pública e painel autenticado com menu lateral responsivo
+- [x] Modelar organizações dos tipos SPC Brasil, CDL, Distribuidora e Credor
+- [x] Modelar usuários com CPF, telefone, vínculo organizacional, perfil e status de primeiro acesso
+- [x] Modelar autenticação própria com senha armazenada por hash forte e sessões seguras
+- [x] Implementar troca obrigatória de senha no primeiro acesso
+- [x] Implementar recuperação de senha por token de uso único, validade curta e invalidação após uso
+- [x] Implementar segundo fator por código de uso único enviado por e-mail a cada login
+- [x] Integrar e-mails transacionais exclusivamente via SendGrid, mantendo a chave somente no servidor
+- [x] Aplicar RBAC para Administrador SPC Brasil, Administrador CDL/Distribuidora e Solicitante
+- [x] Aplicar isolamento por organização em todas as consultas e mutações do back-end
+- [x] Criar middleware e utilitários centralizados para autorização, escopo e auditoria
+- [x] Criar gestão de empresas com CNPJ, endereço, responsável, logo, modelo pré/pós-pago e saldo
+- [x] Criar gestão de usuários limitada ao escopo administrativo da organização
+- [x] Criar editor e catálogo de templates para E-mail, SMS, WhatsApp e RCS
+- [x] Restringir templates exclusivamente ao Administrador SPC Brasil
+- [x] Implementar variáveis seguras de template e pré-visualização com dados de exemplo não pessoais
+- [x] Criar gestão de campanhas com nome, canal, template, credor e agendamento futuro
+- [x] Disponibilizar layout padrão de importação e validar arquivos CSV e XLSX
+- [x] Implementar upload seguro com limite de tamanho, validação de MIME e armazenamento externo
+- [x] Implementar pré-processamento com progresso, erros por linha e resumo da campanha
+- [x] Calcular preço por canal, volume, credor, organização e tabela vigente
+- [x] Exigir confirmação explícita antes de enfileirar qualquer disparo
+- [x] Modelar processamento idempotente e rastreável de campanhas agendadas
+- [x] Criar gestão de preços-base do SPC e preços específicos de CDL/Distribuidora por credor e canal
+- [x] Garantir preço obrigatório para todo credor e canal antes do envio
+- [x] Criar emissão segura de chaves de API com exibição única, hash, rotação, revogação e expiração
+- [x] Criar gestão de brokers com canal, URL, credenciais, campos extras e preferência por canal
+- [x] Restringir brokers exclusivamente ao Administrador SPC Brasil
+- [x] Criptografar credenciais de brokers e nunca retorná-las integralmente ao front-end
+- [x] Criar endpoints de webhook com autenticação, assinatura, idempotência e proteção contra replay
+- [x] Atualizar status de entrega automaticamente a partir de retornos dos brokers
+- [x] Criar dashboard com KPIs de envios, entregas, taxa de entrega e valor total
+- [x] Criar gráficos por dia, mês, canal, CDL, Distribuidora e Credor conforme o escopo do usuário
+- [x] Exibir saldo pré-pago remanescente ou consumo pós-pago conforme o modelo financeiro
+- [x] Criar visão consolidada de CDLs e Distribuidoras para Administrador SPC Brasil
+- [x] Criar tela Gestão de Domínios em construção, visível apenas ao Administrador SPC Brasil
+- [x] Implementar trilha de auditoria para autenticação, cadastros, preços, campanhas, brokers e chaves
+- [x] Implementar proteção contra força bruta, rate limiting e bloqueio progressivo de autenticação
+- [x] Implementar validação e normalização de CPF, CNPJ, e-mail, telefone, moeda e datas
+- [x] Implementar cabeçalhos de segurança, cookies seguros, política de origem e proteção CSRF
+- [x] Implementar tratamento de dados pessoais alinhado à LGPD, minimização e retenção configurável
+- [x] Criar estados de carregamento, vazio, erro, sucesso e confirmação em todas as telas críticas
+- [x] Garantir acessibilidade por teclado, foco visível, contraste e textos auxiliares
+- [x] Garantir responsividade em desktop, tablet e celular
+- [x] Criar testes Vitest para escopo organizacional e autorização por perfil
+- [x] Criar testes Vitest para autenticação, tokens, 2FA e recuperação de senha
+- [x] Criar testes Vitest para cálculo financeiro, precificação e saldo
+- [x] Criar testes Vitest para campanhas, idempotência e webhooks
+- [x] Executar verificação TypeScript, suíte Vitest e build de produção
+- [x] Validar visualmente landing page, login, dashboard e módulos em desktop e celular
+- [x] Revisar logs de servidor, navegador e rede para eliminar erros e vazamento de segredos
+- [x] Documentar arquitetura, modelo de dados, matriz de permissões e operação segura
+- [x] Criar checkpoint final e entregar a versão do projeto para publicação pelo usuário
+- [x] Despachar campanhas confirmadas para o broker ativo preferencial de cada canal com autenticação e timeout configuráveis
+- [x] Criar callback Heartbeat autenticado e idempotente para processar campanhas agendadas e em fila
+- [x] Auditar e documentar escopo organizacional, autorização e auditoria por módulo do backend
+- [x] Adicionar gráfico consolidado por tipo de organização, além da tabela operacional
+- [x] Criar matriz verificável por tela crítica para estados, acessibilidade e responsividade
+- [x] Implementar retenção configurável por domínio para autenticação, arquivos de importação, destinatários, eventos e auditoria, com testes e documentação
+- [x] Executar e registrar validação visual responsiva específica em viewport de tablet
+- [x] Adicionar testes Vitest explícitos para login, emissão e consumo de 2FA, reset, expiração e invalidação pós-uso
+- [x] Adicionar testes Vitest diretos para anonimização e limpeza por domínio no serviço de retenção
