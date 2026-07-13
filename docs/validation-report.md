@@ -2,13 +2,13 @@
 
 ## Execução automatizada
 
-Em 13 de julho de 2026, a aplicação foi validada com verificação TypeScript, suíte Vitest e build de produção. O resultado final foi de **54 testes aprovados em 12 arquivos**, sem erros de tipagem e com geração bem-sucedida dos artefatos de frontend e servidor.
+Em 13 de julho de 2026, a aplicação foi validada com verificação TypeScript, suíte Vitest e build de produção. O resultado final foi de **73 testes aprovados em 14 arquivos**, com um teste de integração dependente de ambiente ignorado, sem erros de tipagem e com geração bem-sucedida dos artefatos de frontend e servidor.
 
-As coberturas incluem login, emissão e consumo de 2FA, criação e invalidação de sessão, recuperação de senha, expiração e uso único de desafios, configuração segura do SendGrid, escopo por organização, autorização por perfil, cálculos financeiros, processamento de campanhas, timeout e autenticação de brokers, assinatura e replay de webhooks, transições monotônicas de entrega, callback periódico autenticado, retenção configurável, bloqueio de conta, vínculo de contexto, proteção de origem, governança arquitetural e contratos de qualidade da interface.
+As coberturas incluem login, emissão e consumo de 2FA, criação e invalidação de sessão, recuperação de senha, expiração e uso único de desafios, configuração segura do SendGrid, escopo por organização, autorização por perfil, cálculos financeiros, layout único de sete colunas, download e reimportação com BOM UTF-8, instruções dos sete cabeçalhos na interface, validação e normalização da importação, renderização das sete variáveis, processamento de campanhas, timeout e autenticação de brokers, assinatura e replay de webhooks, transições monotônicas de entrega, callback periódico autenticado, retenção configurável, bloqueio de conta, vínculo de contexto, proteção de origem, governança arquitetural e contratos de qualidade da interface.
 
 ## Verificação visual
 
-Foram capturadas e revisadas as rotas `/`, `/acesso` e `/app` em 1280 × 720 e 390 × 844. A landing page e o acesso mantiveram hierarquia, contraste, legibilidade e adaptação responsiva. Em sessão anônima, `/app` redirecionou corretamente para `/acesso`, confirmando a proteção do roteamento no cenário disponível.
+Foram capturadas e revisadas as rotas `/`, `/acesso` e `/app` em 1280 × 720 e 390 × 844. A landing page e o acesso mantiveram hierarquia, contraste, legibilidade e adaptação responsiva. Em sessão anônima, `/app`, `/app/campanhas` e `/app/templates` redirecionaram corretamente para `/acesso`; a checagem dedicada das duas últimas rotas foi repetida em 1440 × 1000, confirmando a proteção do conteúdo no cenário disponível.
 
 Uma verificação dedicada em **tablet 768 × 1024** cobriu `/`, `/acesso` e a rota protegida correta `/app`. A landing page reorganizou cartões e chamadas sem corte horizontal, o formulário manteve largura e áreas de toque adequadas e `/app` encaminhou o visitante anônimo para `/acesso` sem expor conteúdo protegido.
 

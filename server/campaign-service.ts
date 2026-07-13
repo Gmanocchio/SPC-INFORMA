@@ -12,8 +12,15 @@ import {
   organizations,
   uploads,
 } from "../drizzle/schema";
-import { TEMPLATE_VARIABLE_KEYS } from "../shared/template-variables";
+import {
+  CAMPAIGN_IMPORT_COLUMNS,
+  formatDebtAmountCents,
+  formatDebtDueDate,
+  TEMPLATE_VARIABLES,
+  type TemplateVariableKey,
+} from "../shared/template-variables";
 import { writeAudit } from "./audit";
+import { isValidCpf, normalizeCpf, normalizePhone } from "./br-validation";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { resolveCampaignPrice } from "./pricing-service";
@@ -41,10 +48,6 @@ function safeFilename(value: string) {
   return basename(value).replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 255) || "importacao";
 }
 
-function normalizeHeader(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-}
-
 function parseRows(buffer: Buffer, mimeType: string, filename: string) {
   const isXlsx = mimeType.includes("spreadsheetml") || filename.toLowerCase().endsWith(".xlsx");
   if (isXlsx) {
@@ -58,32 +61,86 @@ function parseRows(buffer: Buffer, mimeType: string, filename: string) {
   return parseCsv(buffer.toString("utf8"), { columns: true, skip_empty_lines: true, bom: true, relax_column_count: false, trim: true }) as Record<string, unknown>[];
 }
 
-function normalizeTarget(channel: Channel, row: Record<string, unknown>) {
-  const entries = Object.entries(row).map(([key, value]) => [normalizeHeader(key), String(value ?? "").trim()] as const);
-  const normalized = Object.fromEntries(entries);
-  const raw = channel === "EMAIL"
-    ? normalized.email ?? normalized.destinatario ?? ""
-    : normalized.telefone ?? normalized.celular ?? normalized.phone ?? normalized.destinatario ?? "";
-  if (channel === "EMAIL") {
-    const target = raw.toLowerCase();
-    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(target) && target.length <= 320;
-    return { target, valid, error: valid ? null : "E-mail inválido ou ausente." };
-  }
-  const target = raw.replace(/\D/g, "");
-  const valid = target.length >= 10 && target.length <= 13;
-  return { target, valid, error: valid ? null : "Telefone inválido ou ausente." };
+function parseDebtAmount(value: string) {
+  const compact = value.replace(/R\$/gi, "").replace(/\s/g, "").trim();
+  if (!compact || !/^-?[\d.,]+$/.test(compact)) return null;
+  const lastComma = compact.lastIndexOf(",");
+  const lastDot = compact.lastIndexOf(".");
+  const decimalSeparator = lastComma >= 0 && lastDot >= 0
+    ? lastComma > lastDot ? "," : "."
+    : lastComma >= 0
+      ? ","
+      : lastDot >= 0 && compact.length - lastDot - 1 <= 2
+        ? "."
+        : null;
+  const normalized = decimalSeparator
+    ? `${compact.slice(0, compact.lastIndexOf(decimalSeparator)).replace(/[.,]/g, "")}.${compact.slice(compact.lastIndexOf(decimalSeparator) + 1)}`
+    : compact.replace(/[.,]/g, "");
+  if (!/^-?\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const cents = Math.round(amount * 100);
+  return Number.isSafeInteger(cents) ? cents : null;
 }
 
-function sanitizePayload(row: Record<string, unknown>) {
-  const payload: Record<string, string> = Object.create(null);
-  for (const [rawKey, rawValue] of Object.entries(row)) {
-    const key = normalizeHeader(rawKey);
-    if (!key || ["__proto__", "prototype", "constructor"].includes(key)) continue;
-    payload[key] = String(rawValue ?? "").trim().slice(0, 500);
-  }
-  const serialized = JSON.stringify(payload);
-  if (serialized.length > 12_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Uma das linhas excede o limite de dados permitido." });
-  return serialized;
+function parseDebtDueDate(value: string) {
+  const trimmed = value.trim();
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  const year = Number(br?.[3] ?? iso?.[1]);
+  const month = Number(br?.[2] ?? iso?.[2]);
+  const day = Number(br?.[1] ?? iso?.[3]);
+  if (!year || !month || !day) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function assertCampaignImportColumns(row: Record<string, unknown>) {
+  const actual = Object.keys(row).map((column, index) => column.trim().replace(index === 0 ? /^\uFEFF/ : /$^/, ""));
+  const expected = [...CAMPAIGN_IMPORT_COLUMNS];
+  const missing = expected.filter(column => !actual.includes(column));
+  const extra = actual.filter(column => !expected.includes(column as (typeof CAMPAIGN_IMPORT_COLUMNS)[number]));
+  const orderChanged = !missing.length && !extra.length && actual.some((column, index) => column !== expected[index]);
+  if (!missing.length && !extra.length && !orderChanged) return;
+  const details = [
+    missing.length ? `faltando: ${missing.join(", ")}` : null,
+    extra.length ? `não permitidas: ${extra.join(", ")}` : null,
+    orderChanged ? "ordem das colunas diferente do modelo" : null,
+  ].filter(Boolean).join("; ");
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `Layout inválido (${details}). Baixe o modelo padrão e mantenha exatamente as sete colunas.`,
+  });
+}
+
+export function normalizeCampaignImportRow(row: Record<string, unknown>) {
+  const source = Object.fromEntries(TEMPLATE_VARIABLES.map(variable => [variable.key, String(row[variable.column] ?? "").trim()])) as Record<TemplateVariableKey, string>;
+  const cpf = normalizeCpf(source.cpf);
+  const firstName = source.primeiro_nome.split(/\s+/)[0]?.slice(0, 80) ?? "";
+  const debtAmountCents = parseDebtAmount(source.valor_divida);
+  const debtDueDate = parseDebtDueDate(source.vencimento_divida);
+  const contractNumber = source.numero_contrato.slice(0, 120);
+  const creditorPhone = normalizePhone(source.telefone_credor) ?? "";
+  const creditorEmail = source.email_credor.toLowerCase().slice(0, 320);
+  const errors: Array<{ code: string; message: string }> = [];
+  if (!isValidCpf(cpf)) errors.push({ code: "INVALID_CPF", message: "CPF inválido ou ausente." });
+  if (!firstName) errors.push({ code: "INVALID_FIRST_NAME", message: "Primeiro nome do cliente ausente." });
+  if (debtAmountCents === null) errors.push({ code: "INVALID_DEBT_AMOUNT", message: "Valor da dívida inválido ou ausente." });
+  if (!debtDueDate) errors.push({ code: "INVALID_DEBT_DUE_DATE", message: "Vencimento da dívida inválido. Use DD/MM/AAAA." });
+  if (!contractNumber) errors.push({ code: "INVALID_CONTRACT_NUMBER", message: "Número do contrato ausente." });
+  if (creditorPhone.length < 10 || creditorPhone.length > 13) errors.push({ code: "INVALID_CREDITOR_PHONE", message: "Telefone do credor inválido ou ausente." });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(creditorEmail)) errors.push({ code: "INVALID_CREDITOR_EMAIL", message: "E-mail do credor inválido ou ausente." });
+  const variables: Record<TemplateVariableKey, string> = {
+    cpf,
+    primeiro_nome: firstName,
+    valor_divida: debtAmountCents === null ? "" : formatDebtAmountCents(debtAmountCents),
+    vencimento_divida: debtDueDate ? formatDebtDueDate(debtDueDate) : "",
+    numero_contrato: contractNumber,
+    telefone_credor: creditorPhone,
+    email_credor: creditorEmail,
+  };
+  return { cpf, firstName, debtAmountCents, debtDueDate, contractNumber, creditorPhone, creditorEmail, variables, errors };
 }
 
 async function resolveCampaignOrganization(actor: DomainActor, requested?: number) {
@@ -104,9 +161,8 @@ async function assertCreditorAndTemplate(organizationId: number, creditorOrganiz
   if (!template) throw new TRPCError({ code: "BAD_REQUEST", message: "Template ativo incompatível com o canal selecionado." });
 }
 
-export function campaignImportLayout(channel: Channel) {
-  const target = channel === "EMAIL" ? "email" : "telefone";
-  return { filename: `modelo-notificadora-${channel.toLowerCase()}.csv`, columns: [target, ...TEMPLATE_VARIABLE_KEYS], separator: ";", encoding: "UTF-8" };
+export function campaignImportLayout(_channel: Channel) {
+  return { filename: "modelo-notificadora-spc.csv", columns: [...CAMPAIGN_IMPORT_COLUMNS], separator: ";", encoding: "UTF-8" };
 }
 
 export async function listCampaignOptions(actor: DomainActor) {
@@ -154,18 +210,28 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
   const idempotencyKey = hmacToken(`${organization.id}:${input.idempotencyKey}`, ENV.cookieSecret);
   const rows = parseRows(file, input.mimeType, input.filename);
   if (!rows.length || rows.length > MAX_ROWS) throw new TRPCError({ code: "BAD_REQUEST", message: `O arquivo deve conter entre 1 e ${MAX_ROWS.toLocaleString("pt-BR")} linhas.` });
+  assertCampaignImportColumns(rows[0]);
   const normalizedRows = rows.map((row, index) => {
-    const { target, valid, error } = normalizeTarget(input.channel, row);
-    const fallback = target || `linha-${index + 2}`;
+    const normalized = normalizeCampaignImportRow(row);
+    const valid = normalized.errors.length === 0;
+    const fallback = normalized.cpf || `linha-${index + 2}`;
     return {
       campaignId,
       organizationId: organization.id,
       destinationCiphertext: encryptSensitive(fallback, ENV.cookieSecret),
       destinationFingerprint: hmacToken(`${organization.id}:${input.channel}:${fallback}`, ENV.cookieSecret),
-      variablesCiphertext: encryptSensitive(sanitizePayload(row), ENV.cookieSecret),
+      variablesCiphertext: encryptSensitive(JSON.stringify(normalized.variables), ENV.cookieSecret),
+      cpfCiphertext: encryptSensitive(normalized.cpf || "[inválido]", ENV.cookieSecret),
+      firstNameCiphertext: encryptSensitive(normalized.firstName || "[inválido]", ENV.cookieSecret),
+      debtAmountCents: normalized.debtAmountCents,
+      debtDueDate: normalized.debtDueDate,
+      contractNumberCiphertext: encryptSensitive(normalized.contractNumber || "[inválido]", ENV.cookieSecret),
+      creditorPhoneCiphertext: encryptSensitive(normalized.creditorPhone || "[inválido]", ENV.cookieSecret),
+      creditorEmailCiphertext: encryptSensitive(normalized.creditorEmail || "[inválido]", ENV.cookieSecret),
       status: valid ? "PENDING" as const : "INVALID" as const,
-      errorCode: valid ? null : `ROW_${index + 2}:INVALID_TARGET`,
-      validationError: error,
+      errorCode: valid ? null : `ROW_${index + 2}:${normalized.errors[0]?.code ?? "INVALID_ROW"}`,
+      validationCode: normalized.errors[0]?.code ?? "INVALID_ROW",
+      validationError: normalized.errors.map(error => error.message).join(" "),
       rowNumber: index + 2,
     };
   });
@@ -180,7 +246,7 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
   const validationErrors = normalizedRows
     .filter(row => row.status === "INVALID")
     .slice(0, 500)
-    .map(row => ({ rowNumber: row.rowNumber, errorCode: "INVALID_TARGET", message: row.validationError }));
+    .map(row => ({ rowNumber: row.rowNumber, errorCode: row.validationCode, message: row.validationError }));
   try {
     await db.transaction(async tx => {
       const duplicate = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.idempotencyKey, idempotencyKey)).limit(1);
@@ -223,7 +289,7 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
       });
       for (let index = 0; index < normalizedRows.length; index += 500) {
         await tx.insert(campaignRecipients).values(
-          normalizedRows.slice(index, index + 500).map(({ validationError: _error, rowNumber: _row, ...recipient }) => recipient),
+          normalizedRows.slice(index, index + 500).map(({ validationCode: _code, validationError: _error, rowNumber: _row, ...recipient }) => recipient),
         );
       }
     });

@@ -186,7 +186,7 @@ export default function Campaigns() {
   function downloadLayout() {
     const spec = layout.data;
     if (!spec) return;
-    const blob = new Blob([`${spec.columns.join(spec.separator)}\n`], {
+    const blob = new Blob([`\uFEFF${spec.columns.join(spec.separator)}\r\n`], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -309,15 +309,25 @@ export default function Campaigns() {
                   <div className="flex items-center justify-between gap-3">
                     <Label>Arquivo de destinatários</Label>
                     <Button type="button" size="sm" variant="ghost" onClick={downloadLayout}>
-                      <Download className="size-4" /> Baixar modelo {form.channel}
+                      <Download className="size-4" /> Baixar modelo padrão
                     </Button>
+                  </div>
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs leading-5 text-slate-600">
+                    <p className="font-semibold text-slate-800">
+                      Baixe o modelo, preencha uma linha por cliente e envie o arquivo novamente sem alterar os nomes ou a ordem das colunas.
+                    </p>
+                    <ol className="mt-2 grid gap-x-4 sm:grid-cols-2" aria-label="Colunas obrigatórias do modelo padrão">
+                      {layout.data?.columns.map((column, index) => (
+                        <li key={column}><span className="font-semibold text-[#0066cc]">{index + 1}.</span> {column}</li>
+                      ))}
+                    </ol>
                   </div>
                   <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-5 text-center hover:bg-blue-50">
                     <Upload className="size-6 text-[#0066cc]" />
                     <span className="mt-2 font-semibold text-slate-900">
                       {file ? file.name : "Selecione CSV ou XLSX"}
                     </span>
-                    <span className="text-xs text-slate-500">Até 8 MB e 20.000 linhas</span>
+                    <span className="text-xs text-slate-500">Mesmo layout para SMS, e-mail, WhatsApp e RCS · Até 8 MB e 20.000 linhas</span>
                     <input
                       className="hidden"
                       type="file"

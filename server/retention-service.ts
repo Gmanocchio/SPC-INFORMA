@@ -62,6 +62,13 @@ export async function cleanupExpiredPersonalData(
         destinationCiphertext: redacted,
         destinationFingerprint: sql<string>`SHA2(CONCAT('retained:', ${campaignRecipients.id}), 256)`,
         variablesCiphertext: null,
+        cpfCiphertext: null,
+        firstNameCiphertext: null,
+        debtAmountCents: null,
+        debtDueDate: null,
+        contractNumberCiphertext: null,
+        creditorPhoneCiphertext: null,
+        creditorEmailCiphertext: null,
         brokerMessageId: null,
         errorCode: "PII_RETAINED",
       })
@@ -112,4 +119,3 @@ export async function cleanupExpiredPersonalData(
     auditContextsMinimized: affectedRows(auditResult),
   };
 }
-

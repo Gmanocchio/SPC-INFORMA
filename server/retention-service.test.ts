@@ -90,6 +90,13 @@ describe("cleanupExpiredPersonalData", () => {
     expect(double.setCalls[0]).toMatchObject({
       destinationCiphertext: "encrypted-retained-value",
       variablesCiphertext: null,
+      cpfCiphertext: null,
+      firstNameCiphertext: null,
+      debtAmountCents: null,
+      debtDueDate: null,
+      contractNumberCiphertext: null,
+      creditorPhoneCiphertext: null,
+      creditorEmailCiphertext: null,
       brokerMessageId: null,
       errorCode: "PII_RETAINED",
     });

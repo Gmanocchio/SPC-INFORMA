@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { campaignRecipients, campaigns, deliveryEvents, messageTemplates } from "../drizzle/schema";
+import { formatDebtAmountCents, formatDebtDueDate } from "../shared/template-variables";
 import { ENV } from "./_core/env";
 import { getPreferredBrokerForDispatch } from "./broker-service";
 import { getDb } from "./db";
@@ -21,7 +22,26 @@ function targetFor(recipient: typeof campaignRecipients.$inferSelect) {
   return decryptSensitive(recipient.destinationCiphertext, ENV.cookieSecret);
 }
 
-function variablesFor(recipient: typeof campaignRecipients.$inferSelect): Record<string, string> {
+export function variablesFor(recipient: typeof campaignRecipients.$inferSelect): Record<string, string> {
+  if (
+    recipient.cpfCiphertext
+    && recipient.firstNameCiphertext
+    && recipient.debtAmountCents !== null
+    && recipient.debtDueDate
+    && recipient.contractNumberCiphertext
+    && recipient.creditorPhoneCiphertext
+    && recipient.creditorEmailCiphertext
+  ) {
+    return {
+      cpf: decryptSensitive(recipient.cpfCiphertext, ENV.cookieSecret),
+      primeiro_nome: decryptSensitive(recipient.firstNameCiphertext, ENV.cookieSecret),
+      valor_divida: formatDebtAmountCents(recipient.debtAmountCents),
+      vencimento_divida: formatDebtDueDate(recipient.debtDueDate),
+      numero_contrato: decryptSensitive(recipient.contractNumberCiphertext, ENV.cookieSecret),
+      telefone_credor: decryptSensitive(recipient.creditorPhoneCiphertext, ENV.cookieSecret),
+      email_credor: decryptSensitive(recipient.creditorEmailCiphertext, ENV.cookieSecret),
+    };
+  }
   if (!recipient.variablesCiphertext) return {};
   const parsed = JSON.parse(decryptSensitive(recipient.variablesCiphertext, ENV.cookieSecret)) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
@@ -59,11 +79,12 @@ async function dispatchRecipient(campaign: typeof campaigns.$inferSelect, templa
     recipientId: recipient.id,
     channel: campaign.channel,
     destination,
+    destinationType: "CPF",
     subject: template.subject ? renderTemplate(template.subject, variables) : null,
     content: renderTemplate(template.content, variables),
     variables,
     callbackUrl: typeof extra.callbackUrl === "string" ? extra.callbackUrl : undefined,
-    metadata: { brokerId: broker.id, organizationId: campaign.organizationId, creditorOrganizationId: campaign.creditorOrganizationId },
+    metadata: { brokerId: broker.id, organizationId: campaign.organizationId, creditorOrganizationId: campaign.creditorOrganizationId, destinationType: "CPF" },
   };
   let response: Response;
   try {

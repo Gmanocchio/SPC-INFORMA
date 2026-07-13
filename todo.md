@@ -76,3 +76,9 @@
 - [x] Inserir a variável selecionada na posição atual do cursor sem interromper a continuação da digitação
 - [x] Atualizar imediatamente a detecção de variáveis e a pré-visualização após cada inserção
 - [x] Adicionar testes Vitest e validar visualmente o seletor de variáveis em desktop e celular
+- [x] Padronizar o layout CSV/XLSX de todos os canais com CPF, primeiro nome, valor e vencimento da dívida, número do contrato, telefone e e-mail do credor
+- [x] Disponibilizar o mesmo layout para download e reimportação pelo usuário, com cabeçalhos e instruções consistentes
+- [x] Validar e normalizar os sete campos durante a importação, com erros específicos por linha e sem aceitar colunas divergentes
+- [x] Persistir os sete campos por destinatário para uso no processamento e disparo de cada mensagem
+- [x] Disponibilizar os sete campos no seletor de variáveis dos templates de E-mail, SMS, WhatsApp e RCS
+- [x] Renderizar cada disparo com os dados persistidos da respectiva linha e adicionar testes Vitest de regressão multicanal

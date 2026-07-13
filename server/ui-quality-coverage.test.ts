@@ -43,4 +43,11 @@ describe("contratos arquiteturais de qualidade das telas críticas", () => {
     expect(source).toContain("focus-visible:ring-2");
     expect(source).toContain("Tentar novamente");
   });
+
+  it("orienta o download e a reimportação do modelo padrão na tela de campanhas", () => {
+    const source = read("client/src/pages/Campaigns.tsx");
+    expect(source).toContain("preencha uma linha por cliente e envie o arquivo novamente");
+    expect(source).toContain('aria-label="Colunas obrigatórias do modelo padrão"');
+    expect(source).toContain("layout.data?.columns.map");
+  });
 });

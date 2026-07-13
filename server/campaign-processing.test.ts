@@ -1,10 +1,53 @@
 import { describe, expect, it } from "vitest";
-import { brokerHeaders, brokerTimeoutMs, dispatchUrl, renderTemplate } from "./campaign-processing-service";
+import { campaignRecipients } from "../drizzle/schema";
+import { ENV } from "./_core/env";
+import { brokerHeaders, brokerTimeoutMs, dispatchUrl, renderTemplate, variablesFor } from "./campaign-processing-service";
 import { assertSafeBrokerEndpoint } from "./broker-service";
+import { encryptSensitive } from "./security";
 
 describe("processamento de campanhas", () => {
   it("interpola somente variáveis declaradas e esvazia as ausentes", () => {
     expect(renderTemplate("Olá, {{ nome }}. Contrato: {{contrato}} / {{ausente}}", { nome: "Ana", contrato: "42" })).toBe("Olá, Ana. Contrato: 42 / ");
+  });
+
+  it("renderiza as sete variáveis homologadas no conteúdo do disparo", () => {
+    const variables = {
+      cpf: "52998224725",
+      primeiro_nome: "Ana",
+      valor_divida: "R$ 1.234,56",
+      vencimento_divida: "31/12/2026",
+      numero_contrato: "CTR-2026-001",
+      telefone_credor: "1140001234",
+      email_credor: "cobranca@credor.com.br",
+    };
+    expect(renderTemplate(
+      "{{primeiro_nome}} | {{cpf}} | {{valor_divida}} | {{vencimento_divida}} | {{numero_contrato}} | {{telefone_credor}} | {{email_credor}}",
+      variables,
+    )).toBe("Ana | 52998224725 | R$ 1.234,56 | 31/12/2026 | CTR-2026-001 | 1140001234 | cobranca@credor.com.br");
+  });
+
+  it("reconstrói as variáveis pelas colunas persistentes e não pelo JSON legado", () => {
+    const encrypt = (value: string) => encryptSensitive(value, ENV.cookieSecret);
+    const recipient = {
+      cpfCiphertext: encrypt("52998224725"),
+      firstNameCiphertext: encrypt("Ana"),
+      debtAmountCents: 123456,
+      debtDueDate: "2026-12-31",
+      contractNumberCiphertext: encrypt("CTR-2026-001"),
+      creditorPhoneCiphertext: encrypt("1140001234"),
+      creditorEmailCiphertext: encrypt("cobranca@credor.com.br"),
+      variablesCiphertext: encrypt(JSON.stringify({ primeiro_nome: "Valor legado" })),
+    } as unknown as typeof campaignRecipients.$inferSelect;
+
+    expect(variablesFor(recipient)).toEqual({
+      cpf: "52998224725",
+      primeiro_nome: "Ana",
+      valor_divida: "R$ 1.234,56",
+      vencimento_divida: "31/12/2026",
+      numero_contrato: "CTR-2026-001",
+      telefone_credor: "1140001234",
+      email_credor: "cobranca@credor.com.br",
+    });
   });
 
   it("monta autenticação por token e respeita header configurado", () => {

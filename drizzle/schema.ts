@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  date,
   index,
   int,
   json,
@@ -335,6 +336,13 @@ export const campaignRecipients = mysqlTable(
     destinationCiphertext: text("destinationCiphertext").notNull(),
     destinationFingerprint: varchar("destinationFingerprint", { length: 64 }).notNull(),
     variablesCiphertext: text("variablesCiphertext"),
+    cpfCiphertext: text("cpfCiphertext"),
+    firstNameCiphertext: text("firstNameCiphertext"),
+    debtAmountCents: bigint("debtAmountCents", { mode: "number" }),
+    debtDueDate: date("debtDueDate", { mode: "string" }),
+    contractNumberCiphertext: text("contractNumberCiphertext"),
+    creditorPhoneCiphertext: text("creditorPhoneCiphertext"),
+    creditorEmailCiphertext: text("creditorEmailCiphertext"),
     status: mysqlEnum("status", [
       "PENDING",
       "QUEUED",

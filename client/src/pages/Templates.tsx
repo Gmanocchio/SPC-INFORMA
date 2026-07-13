@@ -67,7 +67,7 @@ export default function Templates() {
   const unsupportedVariables = findUnsupportedTemplateVariables(form.subject, form.content);
   const previewSubject = renderSafePreview(form.subject || "Assunto demonstrativo");
   const previewContent = renderSafePreview(form.content || "A pré-visualização aparecerá aqui conforme o conteúdo for digitado.");
-  const destinationColumn = form.channel === "EMAIL" ? "email" : "telefone";
+  const destinationColumn = "CPF";
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -98,7 +98,7 @@ export default function Templates() {
             <div className="eyebrow"><FileText className="size-4" /> Conteúdo homologado SPC</div>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">Templates</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Centralize mensagens versionadas para os quatro canais. Variáveis dinâmicas usam o formato <code className="rounded bg-blue-50 px-1.5 py-0.5 text-[#004a99]">{"{{nome}}"}</code>.
+              Centralize mensagens versionadas para os quatro canais. Variáveis dinâmicas usam o formato <code className="rounded bg-blue-50 px-1.5 py-0.5 text-[#004a99]">{"{{primeiro_nome}}"}</code>.
             </p>
           </div>
 
@@ -172,7 +172,7 @@ export default function Templates() {
                           ))}
                         </div>
                         <p className="mx-2 mt-2 border-t pt-3 text-xs leading-5 text-slate-500">
-                          A coluna de destino <code className="font-semibold text-slate-700">{destinationColumn}</code> identifica o contato e não é inserida na mensagem.
+                          A coluna <code className="font-semibold text-slate-700">{destinationColumn}</code> identifica o destinatário em todos os canais e também pode ser usada na mensagem como <code className="font-semibold text-slate-700">{"{{cpf}}"}</code>.
                         </p>
                       </PopoverContent>
                     </Popover>
@@ -184,7 +184,7 @@ export default function Templates() {
                     className="min-h-44 font-mono text-sm"
                     value={form.content}
                     onChange={event => setForm({ ...form, content: event.target.value })}
-                    placeholder="Olá {{nome}}, há uma oportunidade para regularizar seu contrato."
+                    placeholder="Olá {{primeiro_nome}}, sua dívida de {{valor_divida}} vence em {{vencimento_divida}}."
                   />
                 </div>
 
