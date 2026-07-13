@@ -110,3 +110,12 @@
 - [x] Solicitar a desativação da integração My Browser, registrar que a confirmação recusou a aplicação e concluir todo o ajuste sem utilizar o conector
 - [x] Substituir alegações de aceitação autenticada por evidências verificáveis de testes do backend, contratos da interface e rota protegida
 - [x] Concluir a validação final do seletor de credores sem depender de navegador pessoal, login simulado ou desvio de 2FA
+- [x] Reproduzir e identificar a causa raiz do crash ao abrir uma nova empresa ou editar uma empresa do tipo Credor
+- [x] Corrigir todos os Selects do formulário de empresas para nunca usar itens ou estados de valor inválidos no Radix UI
+- [x] Adicionar teste Vitest de regressão para os estados de criação e edição de empresas do tipo Credor
+- [x] Validar tipagem, testes, build e o componente real em ambiente automatizado; registrar que a validação autenticada manual não foi executada por decisão do usuário
+- [x] Montar o componente real de empresas em teste de interface e comprovar que os diálogos de criação e edição de credor abrem sem exceção
+- [x] Cobrir explicitamente os Selects de Tipo, Vinculado a, Modelo financeiro e Situação contra valores vazios ou órfãos
+- [x] Registrar o limite da validação autenticada quando não houver sessão SPC_ADMIN disponível, sem substituir a regressão automatizada do componente
+- [x] Tornar explícitos no teste de interface os valores seguros de Tipo, Vinculado a, Modelo financeiro e Situação nos modos criação e edição
+- [x] Persistir nota técnica informando que nenhum navegador ou sessão do usuário foi acessado e detalhando a evidência automatizada substituta
