@@ -44,6 +44,18 @@ async function sendTransactionalEmail(message: TransactionalEmail) {
       `Falha no provedor de e-mail (${response.status}; referência ${requestId}).`,
     );
   }
+
+  return { messageId: response.headers.get("x-message-id") };
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character] ?? character);
 }
 
 function brandedHtml(title: string, body: string, code?: string) {
@@ -51,7 +63,7 @@ function brandedHtml(title: string, body: string, code?: string) {
 }
 
 export async function sendLoginCode(to: string, code: string) {
-  await sendTransactionalEmail({
+  return sendTransactionalEmail({
     to,
     subject: "Seu código de acesso — Notificadora SPC Brasil",
     text: `Seu código de acesso é ${code}. Ele expira em 10 minutos. Não compartilhe este código.`,
@@ -64,7 +76,7 @@ export async function sendLoginCode(to: string, code: string) {
 }
 
 export async function sendPasswordResetCode(to: string, code: string) {
-  await sendTransactionalEmail({
+  return sendTransactionalEmail({
     to,
     subject: "Recuperação de senha — Notificadora SPC Brasil",
     text: `Seu código de recuperação é ${code}. Ele expira em 15 minutos. Não compartilhe este código.`,
@@ -76,3 +88,33 @@ export async function sendPasswordResetCode(to: string, code: string) {
   });
 }
 
+export async function sendFirstAccessCredentials(
+  to: string,
+  name: string,
+  temporaryPassword: string,
+  loginUrl: string,
+) {
+  const safeName = escapeHtml(name);
+  const safePassword = escapeHtml(temporaryPassword);
+  const safeLoginUrl = escapeHtml(loginUrl);
+
+  return sendTransactionalEmail({
+    to,
+    subject: "Seu acesso administrativo — Notificadora SPC Brasil",
+    text: [
+      `Olá, ${name}.`,
+      "Seu acesso como Administrador SPC Brasil foi criado.",
+      `E-mail de acesso: ${to}`,
+      `Senha temporária: ${temporaryPassword}`,
+      `Acesse: ${loginUrl}`,
+      "Após informar e-mail e senha, você receberá um código de validação neste mesmo e-mail.",
+      "No primeiro acesso, o sistema exigirá a criação de uma nova senha.",
+      "Não compartilhe esta credencial.",
+    ].join("\n\n"),
+    html: brandedHtml(
+      "Seu acesso administrativo está pronto",
+      `${safeName}, seu perfil de <strong>Administrador SPC Brasil</strong> foi criado. Acesse <a href="${safeLoginUrl}" style="color:#0066CC;font-weight:700">${safeLoginUrl}</a> usando o e-mail <strong>${escapeHtml(to)}</strong> e a senha temporária abaixo. Em seguida, enviaremos um código de validação para este mesmo e-mail. No primeiro acesso, será obrigatório definir uma nova senha.`,
+      safePassword,
+    ),
+  });
+}

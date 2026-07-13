@@ -65,3 +65,4 @@
 - [x] Executar e registrar validação visual responsiva específica em viewport de tablet
 - [x] Adicionar testes Vitest explícitos para login, emissão e consumo de 2FA, reset, expiração e invalidação pós-uso
 - [x] Adicionar testes Vitest diretos para anonimização e limpeza por domínio no serviço de retenção
+- [x] Cadastrar Giuliano Manocchio como primeiro SPC_ADMIN com troca obrigatória de senha e enviar o acesso para giuliano.manocchio@collectioncenter.com.br
