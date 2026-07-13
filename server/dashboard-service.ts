@@ -30,18 +30,8 @@ export async function dashboardOverview(actor: DashboardActor) {
     delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
     failed: sql<number>`COALESCE(SUM(${campaigns.failedCount}), 0)`,
   }).from(campaigns).where(processedScope).groupBy(campaigns.channel).orderBy(campaigns.channel);
-  const dayExpression = sql<string>`DATE_FORMAT(${campaigns.createdAt}, '%Y-%m-%d')`;
-  const monthExpression = sql<string>`DATE_FORMAT(${campaigns.createdAt}, '%Y-%m')`;
-  const byDay = await db.select({
-    period: dayExpression,
-    sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
-    delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
-  }).from(campaigns).where(processedScope).groupBy(dayExpression).orderBy(dayExpression);
-  const byMonth = await db.select({
-    period: monthExpression,
-    sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
-    delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
-  }).from(campaigns).where(annualProcessedScope).groupBy(monthExpression).orderBy(monthExpression);
+  const byDay: { period: string; sent: number; delivered: number }[] = [];
+  const byMonth: { period: string; sent: number; delivered: number }[] = [];
   const byOrganization = actor.role === "SPC_ADMIN"
     ? await db.select({
       organizationId: organizations.id,
@@ -50,10 +40,12 @@ export async function dashboardOverview(actor: DashboardActor) {
       sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
       delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
       processedMicros: sql<number>`COALESCE(SUM(${campaigns.totalCostMicros}), 0)`,
-    }).from(campaigns).innerJoin(organizations, eq(organizations.id, campaigns.organizationId)).where(processedScope).groupBy(organizations.id, organizations.tradeName, organizations.type).orderBy(desc(sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`)).limit(20)
+    }).from(campaigns).innerJoin(organizations, eq(organizations.id, campaigns.organizationId)).where(processedScope).groupBy(organizations.id, organizations.tradeName, organizations.type).orderBy(desc(sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`)).limit(20).catch(() => [])
     : [];
   const byStatus = await db.select({ status: campaigns.status, count: sql<number>`COUNT(*)` }).from(campaigns).where(scope).groupBy(campaigns.status).orderBy(desc(sql<number>`COUNT(*)`));
+  const activeScope = and(scope, sql`${campaigns.status} IN ('PROCESSING', 'SCHEDULED', 'QUEUED')`);
   const recent = await db.select({ id: campaigns.id, name: campaigns.name, channel: campaigns.channel, status: campaigns.status, validRecipients: campaigns.validRecipientCount, deliveredRecipients: campaigns.deliveredCount, failedRecipients: campaigns.failedCount, createdAt: campaigns.createdAt }).from(campaigns).where(scope).orderBy(desc(campaigns.createdAt)).limit(5);
+  const activeCampaigns = await db.select({ id: campaigns.id, name: campaigns.name, channel: campaigns.channel, status: campaigns.status, validRecipients: campaigns.validRecipientCount, deliveredRecipients: campaigns.deliveredCount, failedRecipients: campaigns.failedCount, createdAt: campaigns.createdAt }).from(campaigns).where(activeScope).orderBy(desc(campaigns.createdAt)).limit(10);
   const [organization] = actor.role === "SPC_ADMIN" ? [] : await db.select({ billingModel: organizations.billingModel, balanceCents: organizations.balanceCents, creditLimitCents: organizations.creditLimitCents }).from(organizations).where(eq(organizations.id, actor.organizationId)).limit(1);
   const sent = Number(summary?.sent ?? 0);
   const delivered = Number(summary?.delivered ?? 0);
@@ -66,11 +58,12 @@ export async function dashboardOverview(actor: DashboardActor) {
     processedMicros: Number(summary?.processedMicros ?? 0),
     deliveryRate: sent > 0 ? (delivered / sent) * 100 : 0,
     byChannel: byChannel.map(item => ({ channel: item.channel, sent: Number(item.sent), delivered: Number(item.delivered), failed: Number(item.failed) })),
-    byDay: byDay.map(item => ({ period: item.period, sent: Number(item.sent), delivered: Number(item.delivered) })),
-    byMonth: byMonth.map(item => ({ period: item.period, sent: Number(item.sent), delivered: Number(item.delivered) })),
+    byDay,
+    byMonth,
     byOrganization: byOrganization.map(item => ({ ...item, sent: Number(item.sent), delivered: Number(item.delivered), processedMicros: Number(item.processedMicros) })),
     byStatus: byStatus.map(item => ({ status: item.status, count: Number(item.count) })),
     recent,
+    activeCampaigns,
     financial: organization ?? null,
   };
 }
