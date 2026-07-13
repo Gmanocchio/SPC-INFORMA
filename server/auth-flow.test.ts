@@ -8,7 +8,9 @@ const mocks = vi.hoisted(() => ({
     countRecentAuthChallenges: vi.fn(),
     createAuthChallenge: vi.fn(),
     consumeChallenge: vi.fn(),
+    consumeOtherAuthChallenges: vi.fn(),
     getAuthChallenge: vi.fn(),
+    listUsableAuthChallenges: vi.fn(),
     incrementChallengeAttempts: vi.fn(),
     getUserById: vi.fn(),
     createAuthSession: vi.fn(),
@@ -75,6 +77,7 @@ beforeEach(() => {
   mocks.db.getUserById.mockResolvedValue(user);
   mocks.db.countRecentAuthChallenges.mockResolvedValue(0);
   mocks.db.consumeChallenge.mockResolvedValue(true);
+  mocks.db.listUsableAuthChallenges.mockResolvedValue([]);
 });
 
 describe("authentication service flows", () => {
@@ -97,6 +100,7 @@ describe("authentication service flows", () => {
     const res = response();
     await expect(completeLogin(issued.id, "123456", request(), res)).resolves.toEqual({ mustChangePassword: false });
     expect(mocks.db.consumeChallenge).toHaveBeenCalledWith(issued.id);
+    expect(mocks.db.consumeOtherAuthChallenges).toHaveBeenCalledWith(user.id, "LOGIN_2FA", issued.id);
     expect(mocks.db.createAuthSession).toHaveBeenCalledWith(expect.objectContaining({
       userId: user.id,
       assuranceLevel: "MFA",
@@ -130,6 +134,68 @@ describe("authentication service flows", () => {
     expect(mocks.db.createAuthSession).not.toHaveBeenCalled();
   });
 
+  it("accepts a valid login code when the proxy reports a different IP during verification", async () => {
+    let issued: any;
+    mocks.db.createAuthChallenge.mockImplementation(async value => { issued = value; });
+    await beginLogin(user.email, "SenhaAtual!2026", request());
+    mocks.db.getAuthChallenge.mockResolvedValue({
+      ...issued,
+      requestIpHash: "contexto-legado",
+      attempts: 0,
+      maxAttempts: 5,
+      usedAt: null,
+    });
+
+    const changedIpRequest = {
+      ...request(),
+      ip: "203.0.113.99",
+    } as any;
+    await expect(
+      completeLogin(issued.id, "123456", changedIpRequest, response()),
+    ).resolves.toEqual({ mustChangePassword: false });
+  });
+
+  it("accepts a valid code from another active challenge when e-mails arrive out of order", async () => {
+    const issued: any[] = [];
+    mocks.db.createAuthChallenge.mockImplementation(async value => { issued.push(value); });
+    mocks.createNumericCode.mockReturnValueOnce("111111").mockReturnValueOnce("222222");
+
+    await beginLogin(user.email, "SenhaAtual!2026", request());
+    await beginLogin(user.email, "SenhaAtual!2026", request());
+    const [older, newest] = issued.map(challenge => ({
+      ...challenge,
+      attempts: 0,
+      maxAttempts: 5,
+      usedAt: null,
+    }));
+    mocks.db.getAuthChallenge.mockResolvedValue(newest);
+    mocks.db.listUsableAuthChallenges.mockResolvedValue([newest, older]);
+
+    await expect(
+      completeLogin(newest.id, "111111", request(), response()),
+    ).resolves.toEqual({ mustChangePassword: false });
+    expect(mocks.db.consumeChallenge).toHaveBeenCalledWith(older.id);
+    expect(mocks.db.consumeOtherAuthChallenges).toHaveBeenCalledWith(user.id, "LOGIN_2FA", older.id);
+  });
+
+  it("increments attempts and rejects a code that matches no active challenge", async () => {
+    let issued: any;
+    mocks.db.createAuthChallenge.mockImplementation(async value => { issued = value; });
+    await beginLogin(user.email, "SenhaAtual!2026", request());
+    mocks.db.getAuthChallenge.mockResolvedValue({
+      ...issued,
+      attempts: 0,
+      maxAttempts: 5,
+      usedAt: null,
+    });
+
+    await expect(
+      completeLogin(issued.id, "999999", request(), response()),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(mocks.db.incrementChallengeAttempts).toHaveBeenCalledWith(issued.id);
+    expect(mocks.db.createAuthSession).not.toHaveBeenCalled();
+  });
+
   it("issues and consumes a password-reset challenge, changes the password and revokes existing sessions", async () => {
     let issued: any;
     mocks.db.createAuthChallenge.mockImplementation(async value => { issued = value; });
@@ -154,4 +220,3 @@ describe("authentication service flows", () => {
     expect(mocks.db.completePasswordChange).toHaveBeenCalledTimes(1);
   });
 });
-

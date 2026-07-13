@@ -172,7 +172,6 @@ export async function beginLogin(
     type: "LOGIN_2FA",
     tokenHash: challengeHash(id, code),
     expiresAt: new Date(Date.now() + CHALLENGE_TTL_MS),
-    requestIpHash: hashNetworkValue(requestIp(req), ENV.cookieSecret),
   });
 
   try {
@@ -218,24 +217,35 @@ export async function completeLogin(
     });
   }
 
-  const actual = challengeHash(challenge.id, code);
-  const currentIpHash = hashNetworkValue(requestIp(req), ENV.cookieSecret);
-  if (!matchesBoundContext(challenge.requestIpHash, currentIpHash)) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido ou expirado." });
-  }
-  if (!safeTokenEqual(actual, challenge.tokenHash)) {
+  const activeChallenges = await db.listUsableAuthChallenges(
+    challenge.userId,
+    "LOGIN_2FA",
+  );
+  const matchingChallenge = [challenge, ...activeChallenges]
+    .filter((candidate, index, candidates) =>
+      candidates.findIndex(item => item.id === candidate.id) === index,
+    )
+    .find(candidate =>
+      safeTokenEqual(challengeHash(candidate.id, code), candidate.tokenHash),
+    );
+  if (!matchingChallenge) {
     await db.incrementChallengeAttempts(challenge.id);
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido." });
   }
 
-  const user = await db.getUserById(challenge.userId);
+  const user = await db.getUserById(matchingChallenge.userId);
   if (!user || user.status === "INACTIVE" || user.deletedAt) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso indisponível." });
   }
 
-  if (!(await db.consumeChallenge(challenge.id))) {
+  if (!(await db.consumeChallenge(matchingChallenge.id))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido ou expirado." });
   }
+  await db.consumeOtherAuthChallenges(
+    matchingChallenge.userId,
+    "LOGIN_2FA",
+    matchingChallenge.id,
+  );
   const token = createOpaqueToken();
   const sessionId = createOpaqueToken(24);
   await db.createAuthSession({

@@ -66,3 +66,8 @@
 - [x] Adicionar testes Vitest explícitos para login, emissão e consumo de 2FA, reset, expiração e invalidação pós-uso
 - [x] Adicionar testes Vitest diretos para anonimização e limpeza por domínio no serviço de retenção
 - [x] Cadastrar Giuliano Manocchio como primeiro SPC_ADMIN com troca obrigatória de senha e enviar o acesso para giuliano.manocchio@collectioncenter.com.br
+- [x] Corrigir o fluxo 2FA que rejeita códigos válidos enviados por e-mail como inválidos ou expirados
+- [x] Adicionar teste de regressão integrado cobrindo emissão, persistência e consumo do mesmo código 2FA
+- [x] Validar que códigos incorretos, expirados e reutilizados continuam sendo rejeitados após a correção
+- [x] Adicionar teste de integração do 2FA sem mockar a persistência crítica, cobrindo criação, leitura e consumo único do desafio
+- [x] Validar em teste automatizado que o código emitido por beginLogin é confirmado por completeLogin contra o registro persistido e invalidado após uso

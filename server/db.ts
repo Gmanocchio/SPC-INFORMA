@@ -124,6 +124,28 @@ export async function getAuthChallenge(id: string) {
   )[0];
 }
 
+export async function listUsableAuthChallenges(
+  userId: number,
+  type: InsertAuthChallenge["type"],
+  now = new Date(),
+) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(authChallenges)
+    .where(
+      and(
+        eq(authChallenges.userId, userId),
+        eq(authChallenges.type, type),
+        isNull(authChallenges.usedAt),
+        gt(authChallenges.expiresAt, now),
+        sql`${authChallenges.attempts} < ${authChallenges.maxAttempts}`,
+      ),
+    )
+    .orderBy(desc(authChallenges.createdAt))
+    .limit(10);
+}
+
 export async function incrementChallengeAttempts(id: string) {
   const db = await requireDb();
   await db
@@ -139,6 +161,25 @@ export async function consumeChallenge(id: string) {
     .set({ usedAt: new Date() })
     .where(and(eq(authChallenges.id, id), isNull(authChallenges.usedAt)));
   return Number(result[0].affectedRows) === 1;
+}
+
+export async function consumeOtherAuthChallenges(
+  userId: number,
+  type: InsertAuthChallenge["type"],
+  exceptId: string,
+) {
+  const db = await requireDb();
+  await db
+    .update(authChallenges)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(authChallenges.userId, userId),
+        eq(authChallenges.type, type),
+        ne(authChallenges.id, exceptId),
+        isNull(authChallenges.usedAt),
+      ),
+    );
 }
 
 export async function cleanupExpiredAuthArtifacts(now = new Date()) {
