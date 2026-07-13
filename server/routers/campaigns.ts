@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
-import { campaignDetails, campaignImportLayout, confirmCampaign, createCampaignFromFile, listCampaignOptions, listCampaigns, updateCampaign } from "../campaign-service";
+import { campaignDetails, campaignImportLayout, confirmCampaign, createCampaignFromFile, deleteCampaign, listCampaignOptions, listCampaigns, updateCampaign } from "../campaign-service";
 
 const channel = z.enum(["SMS", "EMAIL", "WHATSAPP", "RCS"]);
 const actor = (ctx: { user: { id: number; organizationId: number; role: "SPC_ADMIN" | "ORG_ADMIN" | "REQUESTER" } | null }) => {
@@ -22,4 +22,5 @@ export const campaignsRouter = router({
     }).refine(data => data.name !== undefined || data.scheduledFor !== undefined, "Informe ao menos um campo para editar."),
   })).mutation(({ ctx, input }) => updateCampaign(actor(ctx), input.id, input.data)),
   confirm: protectedProcedure.input(z.object({ id: z.string().uuid(), confirm: z.literal(true) })).mutation(({ ctx, input }) => confirmCampaign(actor(ctx), input.id, input.confirm)),
+  delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(({ ctx, input }) => deleteCampaign(actor(ctx), input.id)),
 });

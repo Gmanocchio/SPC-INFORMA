@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Send,
+  Trash2,
   TriangleAlert,
   Upload,
 } from "lucide-react";
@@ -128,7 +129,7 @@ export default function Campaigns() {
     },
   });
 
-  const confirm = trpc.campaigns.confirm.useMutation({
+  const confirmCampaignMutation = trpc.campaigns.confirm.useMutation({
     onSuccess: async result => {
       await utils.campaigns.list.invalidate();
       setSummary(null);
@@ -146,6 +147,14 @@ export default function Campaigns() {
       await utils.campaigns.list.invalidate();
       setEditingCampaign(null);
       toast.success("Campanha atualizada e alteração registrada na auditoria.");
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const deleteCampaign = trpc.campaigns.delete.useMutation({
+    onSuccess: async () => {
+      await utils.campaigns.list.invalidate();
+      toast.success("Campanha deletada com sucesso. Você pode fazer upload novamente.");
     },
     onError: error => toast.error(error.message),
   });
@@ -439,8 +448,8 @@ export default function Campaigns() {
             </div>
             <div className="flex flex-col gap-2">
               <Button
-                disabled={!summary.validRows || confirm.isPending}
-                onClick={() => confirm.mutate({ id: summary.id, confirm: true })}
+                disabled={!summary.validRows || confirmCampaignMutation.isPending}
+                onClick={() => confirmCampaignMutation.mutate({ id: summary.id, confirm: true })}
                 className="bg-[#00a86b] text-white hover:bg-emerald-700"
               >
                 <Send className="size-4" /> Confirmar campanha
@@ -545,8 +554,15 @@ export default function Campaigns() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {identity?.user.role !== "REQUESTER" && ["DRAFT", "READY", "SCHEDULED"].includes(campaign.status) ? (
-                        <Button type="button" size="icon" variant="outline" className="bg-white" aria-label={`Editar ${campaign.name}`} onClick={() => startEditingCampaign(campaign)}><Pencil className="size-4" /></Button>
+                      {identity?.user.role !== "REQUESTER" && ["DRAFT", "READY", "SCHEDULED", "FAILED"].includes(campaign.status) ? (
+                        <div className="flex gap-2 justify-end">
+                          <Button type="button" size="icon" variant="outline" className="bg-white" aria-label={`Editar ${campaign.name}`} onClick={() => startEditingCampaign(campaign)}><Pencil className="size-4" /></Button>
+                          <Button type="button" size="icon" variant="outline" className="bg-white text-red-600 hover:bg-red-50" aria-label={`Deletar ${campaign.name}`} disabled={deleteCampaign.isPending} onClick={() => {
+                            if (confirm(`Tem certeza que deseja deletar "${campaign.name}"? Você poderá fazer upload novamente.`)) {
+                              deleteCampaign.mutate({ id: campaign.id });
+                            }
+                          }}><Trash2 className="size-4" /></Button>
+                        </div>
                       ) : <span className="text-xs text-slate-400">Bloqueada após início</span>}
                     </TableCell>
                   </TableRow>

@@ -477,3 +477,29 @@ export function calculateBalanceAfterConfirmation(input: {
   }
   return nextBalance;
 }
+
+export async function deleteCampaign(actor: DomainActor, id: string) {
+  if (actor.role === "REQUESTER") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem deletar campanhas." });
+  const db = await requireDb();
+  const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, id), campaignScope(actor))).limit(1);
+  if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Campanha não encontrada no seu escopo." });
+  assertCampaignEditable(campaign.status);
+  
+  // Delete related recipients first
+  await db.delete(campaignRecipients).where(eq(campaignRecipients.campaignId, id));
+  
+  // Delete the campaign
+  const [result] = await db.delete(campaigns).where(eq(campaigns.id, id));
+  if (Number(result.affectedRows) !== 1) throw new TRPCError({ code: "CONFLICT", message: "A campanha foi alterada por outra operação." });
+  
+  await writeAudit({
+    organizationId: campaign.organizationId,
+    actorUserId: actor.id,
+    action: "CAMPAIGN_DELETED",
+    resourceType: "campaign",
+    resourceId: campaign.id,
+    metadata: { previousStatus: campaign.status },
+  });
+  
+  return { success: true as const };
+}
