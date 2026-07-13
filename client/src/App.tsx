@@ -7,6 +7,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import { DashboardLayoutSkeleton } from "./components/DashboardLayoutSkeleton";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { protectedRouteDecision } from "./lib/route-access";
 
 const Access = lazy(() => import("./pages/Access"));
 const ApiKeys = lazy(() => import("./pages/ApiKeys"));
@@ -26,15 +27,14 @@ const Users = lazy(() => import("./pages/Users"));
 function ProtectedPage({ children, spcOnly = false }: { children: ReactNode; spcOnly?: boolean }) {
   const { user, loading } = useAuth();
   const [, navigate] = useLocation();
+  const access = protectedRouteDecision({ loading, user, spcOnly });
+  const redirectPath = access.status === "redirect" ? access.path : null;
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) navigate("/acesso", { replace: true });
-    else if (user.user.mustChangePassword) navigate("/app/primeiro-acesso", { replace: true });
-    else if (spcOnly && user.user.role !== "SPC_ADMIN") navigate("/app", { replace: true });
-  }, [loading, navigate, spcOnly, user]);
+    if (redirectPath) navigate(redirectPath, { replace: true });
+  }, [navigate, redirectPath]);
 
-  if (loading || !user || user.user.mustChangePassword || (spcOnly && user.user.role !== "SPC_ADMIN")) {
+  if (access.status !== "allow") {
     return <DashboardLayoutSkeleton />;
   }
   return <DashboardLayout>{children}</DashboardLayout>;

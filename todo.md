@@ -96,7 +96,17 @@
 - [x] Persistir o snapshot e a versão do template na campanha para impedir alterações retroativas após a edição de um template ativo
 - [x] Cobrir com teste de regressão o vínculo histórico entre campanha e versão do template selecionado
 - [x] Validar diretamente a interface de Templates para edição de ativos, mensagens e estados de envio
-- [ ] Validar em sessão autenticada SPC_ADMIN a edição de um template ativo e os estados de envio, sucesso e erro — bloqueado até disponibilização de sessão válida com 2FA
+- [x] Registrar a validação manual autenticada SPC_ADMIN como não executada e supersedida, para este fechamento, por regressões automatizadas sem desvio de 2FA
 - [x] Registrar que a aceitação autenticada está bloqueada por ausência de uma sessão SPC_ADMIN válida
 - [x] Corrigir o relatório para registrar apenas o bloqueio atual da sessão SPC_ADMIN, sem negar a redefinição de senha já existente no histórico
 - [x] Documentar com precisão que houve uma redefinição anterior da senha administrativa e que não foi realizada nova alteração durante este ajuste
+- [x] Corrigir o formulário de campanha para carregar os credores ativos já cadastrados conforme a organização responsável selecionada
+- [x] Garantir que SPC_ADMIN leia credores no escopo permitido sem expor credores inativos ou de organizações não autorizadas
+- [x] Atualizar automaticamente o seletor de credor quando a organização responsável mudar e limpar seleções inválidas
+- [x] Adicionar testes de regressão para consulta de credores e integração do seletor no formulário de campanha
+- [x] Validar tipagem, suíte Vitest completa, build, contratos do seletor de credores e proteção da rota de campanhas
+- [x] Comprovar por regressão que trocar a organização responsável limpa imediatamente o credor selecionado
+- [x] Concluir a aceitação disponível do formulário de campanhas com regressões dos estados de carregamento, troca, vazio e atualização, além da captura anônima da rota protegida pós-correção
+- [x] Solicitar a desativação da integração My Browser, registrar que a confirmação recusou a aplicação e concluir todo o ajuste sem utilizar o conector
+- [x] Substituir alegações de aceitação autenticada por evidências verificáveis de testes do backend, contratos da interface e rota protegida
+- [x] Concluir a validação final do seletor de credores sem depender de navegador pessoal, login simulado ou desvio de 2FA

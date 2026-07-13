@@ -41,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { QueryErrorState } from "@/components/QueryErrorState";
+import { campaignFormAfterOwnerChange, creditorsForCampaignOwner } from "@/lib/campaign-options";
 import { trpc } from "@/lib/trpc";
 
 type Channel = "SMS" | "EMAIL" | "WHATSAPP" | "RCS";
@@ -98,17 +99,14 @@ export default function Campaigns() {
 
   const campaigns = trpc.campaigns.list.useQuery();
   const templates = trpc.commercial.templates.available.useQuery({ channel: form.channel });
-  const options = trpc.campaigns.options.useQuery();
+  const options = trpc.campaigns.options.useQuery(undefined, { refetchOnMount: "always" });
   const layout = trpc.campaigns.layout.useQuery({ channel: form.channel });
   const isSpc = identity?.user.role === "SPC_ADMIN";
   const ownerId = isSpc ? Number(form.organizationId) || undefined : identity?.user.organizationId;
   const owners = options.data?.owners ?? [];
   const creditors = useMemo(
-    () =>
-      options.data?.creditors.filter(item =>
-        isSpc ? !ownerId || item.parentOrganizationId === ownerId : true,
-      ) ?? [],
-    [isSpc, options.data, ownerId],
+    () => creditorsForCampaignOwner(owners, options.data?.creditors ?? [], String(ownerId ?? ""), isSpc),
+    [creditorsForCampaignOwner, isSpc, options.data?.creditors, ownerId, owners],
   );
 
   const importCampaign = trpc.campaigns.import.useMutation({
@@ -247,6 +245,7 @@ export default function Campaigns() {
             open={open}
             onOpenChange={next => {
               setOpen(next);
+              if (next) void options.refetch();
               if (!next && !importCampaign.isPending) setProcessingStage(0);
             }}
           >
@@ -291,9 +290,7 @@ export default function Campaigns() {
                   <Field label="Organização responsável">
                     <Select
                       value={form.organizationId}
-                      onValueChange={value =>
-                        setForm({ ...form, organizationId: value, creditorOrganizationId: "" })
-                      }
+                      onValueChange={value => setForm(current => campaignFormAfterOwnerChange(current, value))}
                     >
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
@@ -308,14 +305,20 @@ export default function Campaigns() {
                   <Select
                     value={form.creditorOrganizationId}
                     onValueChange={value => setForm({ ...form, creditorOrganizationId: value })}
+                    disabled={!ownerId || options.isFetching}
                   >
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={options.isFetching ? "Atualizando credores…" : "Selecione"} /></SelectTrigger>
                     <SelectContent>
-                      {creditors.map(item => (
-                        <SelectItem key={item.id} value={String(item.id)}>{item.tradeName}</SelectItem>
-                      ))}
+                      {creditors.length
+                        ? creditors.map(item => (
+                            <SelectItem key={item.id} value={String(item.id)}>{item.tradeName}</SelectItem>
+                          ))
+                        : <SelectItem value="__no_creditors__" disabled>Nenhum credor ativo disponível</SelectItem>}
                     </SelectContent>
                   </Select>
+                  {ownerId && !options.isFetching && !creditors.length
+                    ? <p className="mt-1 text-xs text-amber-700">Nenhum credor ativo foi encontrado para a organização responsável.</p>
+                    : null}
                 </Field>
                 <Field label="Template homologado">
                   <Select
