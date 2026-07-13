@@ -50,4 +50,18 @@ describe("contratos arquiteturais de qualidade das telas críticas", () => {
     expect(source).toContain('aria-label="Colunas obrigatórias do modelo padrão"');
     expect(source).toContain("layout.data?.columns.map");
   });
+
+  it("mantém o seletor de variáveis rolável e acessível dentro da área disponível", () => {
+    const source = read("client/src/pages/Templates.tsx");
+    expect(source).toContain("--radix-popover-content-available-height");
+    expect(source).toContain("overflow-y-scroll");
+    expect(source).toContain("[scrollbar-gutter:stable]");
+    expect(source).toContain("variable-picker-scrollbar");
+    expect(source).toContain('aria-label="Variáveis disponíveis"');
+    expect(source).toContain("tabIndex={0}");
+
+    const styles = read("client/src/index.css");
+    expect(styles).toContain(".variable-picker-scrollbar::-webkit-scrollbar");
+    expect(styles).toContain("scrollbar-color:");
+  });
 });

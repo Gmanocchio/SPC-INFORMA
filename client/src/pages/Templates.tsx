@@ -150,12 +150,19 @@ export default function Templates() {
                           <Braces className="size-4" /> Inserir variável
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent align="end" className="z-[70] w-[min(22rem,calc(100vw-2rem))] p-2">
-                        <div className="px-2 pb-2 pt-1">
+                      <PopoverContent
+                        align="end"
+                        className="z-[70] flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(22rem,calc(100vw-2rem))] flex-col p-2"
+                      >
+                        <div className="shrink-0 px-2 pb-2 pt-1">
                           <p className="text-sm font-bold text-slate-950">Variáveis da planilha</p>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">A variável será inserida na posição atual do cursor.</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">A variável será inserida na posição atual do cursor. Role a lista para ver todas as opções.</p>
                         </div>
-                        <div className="grid gap-1" aria-label="Variáveis disponíveis">
+                        <div
+                          className="variable-picker-scrollbar grid min-h-0 flex-1 gap-1 overflow-y-scroll overscroll-contain pr-1 [scrollbar-gutter:stable]"
+                          aria-label="Variáveis disponíveis"
+                          tabIndex={0}
+                        >
                           {TEMPLATE_VARIABLES.map(variable => (
                             <button
                               key={variable.key}
@@ -171,7 +178,7 @@ export default function Templates() {
                             </button>
                           ))}
                         </div>
-                        <p className="mx-2 mt-2 border-t pt-3 text-xs leading-5 text-slate-500">
+                        <p className="mx-2 mt-2 shrink-0 border-t pt-3 text-xs leading-5 text-slate-500">
                           A coluna <code className="font-semibold text-slate-700">{destinationColumn}</code> identifica o destinatário em todos os canais e também pode ser usada na mensagem como <code className="font-semibold text-slate-700">{"{{cpf}}"}</code>.
                         </p>
                       </PopoverContent>

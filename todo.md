@@ -82,3 +82,4 @@
 - [x] Persistir os sete campos por destinatário para uso no processamento e disparo de cada mensagem
 - [x] Disponibilizar os sete campos no seletor de variáveis dos templates de E-mail, SMS, WhatsApp e RCS
 - [x] Renderizar cada disparo com os dados persistidos da respectiva linha e adicionar testes Vitest de regressão multicanal
+- [x] Adicionar rolagem interna responsiva e acessível ao seletor de variáveis dos templates em desktop e celular
