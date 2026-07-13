@@ -49,6 +49,10 @@ describe("contratos arquiteturais de qualidade das telas críticas", () => {
     expect(source).toContain("preencha uma linha por cliente e envie o arquivo novamente");
     expect(source).toContain('aria-label="Colunas obrigatórias do modelo padrão"');
     expect(source).toContain("layout.data?.columns.map");
+    expect(source).toContain('downloadLayout("csv")');
+    expect(source).toContain('downloadLayout("xlsx")');
+    expect(source).toContain("Modelo CSV");
+    expect(source).toContain("Modelo XLSX");
   });
 
   it("mantém o seletor de variáveis rolável e acessível dentro da área disponível", () => {
@@ -59,6 +63,7 @@ describe("contratos arquiteturais de qualidade das telas críticas", () => {
     expect(source).toContain("variable-picker-scrollbar");
     expect(source).toContain('aria-label="Variáveis disponíveis"');
     expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("TEMPLATE_VARIABLES.map");
 
     const styles = read("client/src/index.css");
     expect(styles).toContain(".variable-picker-scrollbar::-webkit-scrollbar");

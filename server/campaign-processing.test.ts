@@ -10,20 +10,22 @@ describe("processamento de campanhas", () => {
     expect(renderTemplate("Olá, {{ nome }}. Contrato: {{contrato}} / {{ausente}}", { nome: "Ana", contrato: "42" })).toBe("Olá, Ana. Contrato: 42 / ");
   });
 
-  it("renderiza as sete variáveis homologadas no conteúdo do disparo", () => {
+  it.each(["EMAIL", "SMS", "WHATSAPP", "RCS"] as const)("renderiza as nove variáveis homologadas no disparo de %s", channel => {
     const variables = {
       cpf: "52998224725",
-      primeiro_nome: "Ana",
-      valor_divida: "R$ 1.234,56",
-      vencimento_divida: "31/12/2026",
+      nome_cliente: "Ana Maria",
+      nome_credor: "Credor Brasil",
+      valor: "R$ 1.234,56",
+      data_vencimento: "31/12/2026",
       numero_contrato: "CTR-2026-001",
       telefone_credor: "1140001234",
       email_credor: "cobranca@credor.com.br",
+      link: "https://credor.example/negociar/CTR-2026-001",
     };
     expect(renderTemplate(
-      "{{primeiro_nome}} | {{cpf}} | {{valor_divida}} | {{vencimento_divida}} | {{numero_contrato}} | {{telefone_credor}} | {{email_credor}}",
+      `[${channel}] {{nome_cliente}} | {{cpf}} | {{nome_credor}} | {{valor}} | {{data_vencimento}} | {{numero_contrato}} | {{telefone_credor}} | {{email_credor}} | {{link}}`,
       variables,
-    )).toBe("Ana | 52998224725 | R$ 1.234,56 | 31/12/2026 | CTR-2026-001 | 1140001234 | cobranca@credor.com.br");
+    )).toBe(`[${channel}] Ana Maria | 52998224725 | Credor Brasil | R$ 1.234,56 | 31/12/2026 | CTR-2026-001 | 1140001234 | cobranca@credor.com.br | https://credor.example/negociar/CTR-2026-001`);
   });
 
   it("usa o snapshot da campanha mesmo após o template ativo receber uma nova versão", () => {
@@ -49,23 +51,30 @@ describe("processamento de campanhas", () => {
     const encrypt = (value: string) => encryptSensitive(value, ENV.cookieSecret);
     const recipient = {
       cpfCiphertext: encrypt("52998224725"),
-      firstNameCiphertext: encrypt("Ana"),
-      debtAmountCents: 123456,
-      debtDueDate: "2026-12-31",
+      customerNameCiphertext: encrypt("Ana Maria"),
+      creditorNameCiphertext: encrypt("Credor Brasil"),
+      amountCents: 123456,
+      dueDate: "2026-12-31",
       contractNumberCiphertext: encrypt("CTR-2026-001"),
       creditorPhoneCiphertext: encrypt("1140001234"),
       creditorEmailCiphertext: encrypt("cobranca@credor.com.br"),
+      linkCiphertext: encrypt("https://credor.example/negociar/CTR-2026-001"),
       variablesCiphertext: encrypt(JSON.stringify({ primeiro_nome: "Valor legado" })),
     } as unknown as typeof campaignRecipients.$inferSelect;
 
     expect(variablesFor(recipient)).toEqual({
       cpf: "52998224725",
-      primeiro_nome: "Ana",
-      valor_divida: "R$ 1.234,56",
-      vencimento_divida: "31/12/2026",
+      nome_cliente: "Ana Maria",
+      nome_credor: "Credor Brasil",
+      valor: "R$ 1.234,56",
+      data_vencimento: "31/12/2026",
       numero_contrato: "CTR-2026-001",
       telefone_credor: "1140001234",
       email_credor: "cobranca@credor.com.br",
+      link: "https://credor.example/negociar/CTR-2026-001",
+      primeiro_nome: "Ana",
+      valor_divida: "R$ 1.234,56",
+      vencimento_divida: "31/12/2026",
     });
   });
 

@@ -71,7 +71,7 @@ function parseRows(buffer: Buffer, mimeType: string, filename: string) {
   return parseCsv(text, { columns: true, skip_empty_lines: true, bom: true, relax_column_count: false, trim: true, delimiter }) as Record<string, unknown>[];
 }
 
-function parseDebtAmount(value: string) {
+function parseAmount(value: string) {
   const compact = value.replace(/R\$/gi, "").replace(/\s/g, "").trim();
   if (!compact || !/^-?[\d.,]+$/.test(compact)) return null;
   const lastComma = compact.lastIndexOf(",");
@@ -93,7 +93,7 @@ function parseDebtAmount(value: string) {
   return Number.isSafeInteger(cents) ? cents : null;
 }
 
-function parseDebtDueDate(value: string) {
+function parseDueDate(value: string) {
   const trimmed = value.trim();
   const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
@@ -120,37 +120,73 @@ export function assertCampaignImportColumns(row: Record<string, unknown>) {
   ].filter(Boolean).join("; ");
   throw new TRPCError({
     code: "BAD_REQUEST",
-    message: `Layout inválido (${details}). Baixe o modelo padrão e mantenha exatamente as sete colunas.`,
+    message: `Layout inválido (${details}). Baixe o modelo padrão e mantenha exatamente as nove colunas.`,
   });
+}
+
+function normalizeCreditorPhones(value: string) {
+  const parts = value.split(/[;,|/]+/).map(item => normalizePhone(item) ?? "").filter(Boolean);
+  if (!parts.length || parts.length > 5 || parts.some(item => item.length < 10 || item.length > 13)) return null;
+  return parts.join(" / ");
+}
+
+function normalizeLink(value: string) {
+  try {
+    const link = new URL(value.trim());
+    if (!new Set(["http:", "https:"]).has(link.protocol) || link.toString().length > 2048) return null;
+    return link.toString();
+  } catch {
+    return null;
+  }
 }
 
 export function normalizeCampaignImportRow(row: Record<string, unknown>) {
   const source = Object.fromEntries(TEMPLATE_VARIABLES.map(variable => [variable.key, String(row[variable.column] ?? "").trim()])) as Record<TemplateVariableKey, string>;
   const cpf = normalizeCpf(source.cpf);
-  const firstName = source.primeiro_nome.split(/\s+/)[0]?.slice(0, 80) ?? "";
-  const debtAmountCents = parseDebtAmount(source.valor_divida);
-  const debtDueDate = parseDebtDueDate(source.vencimento_divida);
+  const customerName = source.nome_cliente.replace(/\s+/g, " ").slice(0, 160);
+  const creditorName = source.nome_credor.replace(/\s+/g, " ").slice(0, 160);
+  const amountCents = parseAmount(source.valor);
+  const dueDate = parseDueDate(source.data_vencimento);
   const contractNumber = source.numero_contrato.slice(0, 120);
-  const creditorPhone = normalizePhone(source.telefone_credor) ?? "";
+  const creditorPhone = normalizeCreditorPhones(source.telefone_credor);
   const creditorEmail = source.email_credor.toLowerCase().slice(0, 320);
+  const link = normalizeLink(source.link);
   const errors: Array<{ code: string; message: string }> = [];
   if (!isValidCpf(cpf)) errors.push({ code: "INVALID_CPF", message: "CPF inválido ou ausente." });
-  if (!firstName) errors.push({ code: "INVALID_FIRST_NAME", message: "Primeiro nome do cliente ausente." });
-  if (debtAmountCents === null) errors.push({ code: "INVALID_DEBT_AMOUNT", message: "Valor da dívida inválido ou ausente." });
-  if (!debtDueDate) errors.push({ code: "INVALID_DEBT_DUE_DATE", message: "Vencimento da dívida inválido. Use DD/MM/AAAA." });
+  if (!customerName) errors.push({ code: "INVALID_CUSTOMER_NAME", message: "Nome do cliente ausente." });
+  if (!creditorName) errors.push({ code: "INVALID_CREDITOR_NAME", message: "Nome do credor ausente." });
+  if (amountCents === null) errors.push({ code: "INVALID_AMOUNT", message: "Valor inválido ou ausente." });
+  if (!dueDate) errors.push({ code: "INVALID_DUE_DATE", message: "Data de vencimento inválida. Use DD/MM/AAAA." });
   if (!contractNumber) errors.push({ code: "INVALID_CONTRACT_NUMBER", message: "Número do contrato ausente." });
-  if (creditorPhone.length < 10 || creditorPhone.length > 13) errors.push({ code: "INVALID_CREDITOR_PHONE", message: "Telefone do credor inválido ou ausente." });
+  if (!creditorPhone) errors.push({ code: "INVALID_CREDITOR_PHONE", message: "Telefone do credor inválido ou ausente." });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(creditorEmail)) errors.push({ code: "INVALID_CREDITOR_EMAIL", message: "E-mail do credor inválido ou ausente." });
+  if (!link) errors.push({ code: "INVALID_LINK", message: "Link inválido ou ausente. Use um endereço HTTP ou HTTPS." });
   const variables: Record<TemplateVariableKey, string> = {
     cpf,
-    primeiro_nome: firstName,
-    valor_divida: debtAmountCents === null ? "" : formatDebtAmountCents(debtAmountCents),
-    vencimento_divida: debtDueDate ? formatDebtDueDate(debtDueDate) : "",
+    nome_cliente: customerName,
+    nome_credor: creditorName,
+    valor: amountCents === null ? "" : formatDebtAmountCents(amountCents),
+    data_vencimento: dueDate ? formatDebtDueDate(dueDate) : "",
     numero_contrato: contractNumber,
-    telefone_credor: creditorPhone,
+    telefone_credor: creditorPhone ?? "",
     email_credor: creditorEmail,
+    link: link ?? "",
   };
-  return { cpf, firstName, debtAmountCents, debtDueDate, contractNumber, creditorPhone, creditorEmail, variables, errors };
+  return { cpf, customerName, creditorName, amountCents, dueDate, contractNumber, creditorPhone: creditorPhone ?? "", creditorEmail, link: link ?? "", variables, errors };
+}
+
+export function campaignRecipientPersistenceValues(normalized: ReturnType<typeof normalizeCampaignImportRow>) {
+  return {
+    cpf: normalized.cpf,
+    customerName: normalized.customerName,
+    creditorName: normalized.creditorName,
+    amountCents: normalized.amountCents,
+    dueDate: normalized.dueDate,
+    contractNumber: normalized.contractNumber,
+    creditorPhone: normalized.creditorPhone,
+    creditorEmail: normalized.creditorEmail,
+    link: normalized.link,
+  };
 }
 
 async function resolveCampaignOrganization(actor: DomainActor, requested?: number) {
@@ -238,21 +274,24 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
   assertCampaignImportColumns(rows[0]);
   const normalizedRows = rows.map((row, index) => {
     const normalized = normalizeCampaignImportRow(row);
+    const persisted = campaignRecipientPersistenceValues(normalized);
     const valid = normalized.errors.length === 0;
-    const fallback = normalized.cpf || `linha-${index + 2}`;
+    const fallback = persisted.cpf || `linha-${index + 2}`;
     return {
       campaignId,
       organizationId: organization.id,
       destinationCiphertext: encryptSensitive(fallback, ENV.cookieSecret),
       destinationFingerprint: hmacToken(`${organization.id}:${input.channel}:${fallback}`, ENV.cookieSecret),
       variablesCiphertext: encryptSensitive(JSON.stringify(normalized.variables), ENV.cookieSecret),
-      cpfCiphertext: encryptSensitive(normalized.cpf || "[inválido]", ENV.cookieSecret),
-      firstNameCiphertext: encryptSensitive(normalized.firstName || "[inválido]", ENV.cookieSecret),
-      debtAmountCents: normalized.debtAmountCents,
-      debtDueDate: normalized.debtDueDate,
-      contractNumberCiphertext: encryptSensitive(normalized.contractNumber || "[inválido]", ENV.cookieSecret),
-      creditorPhoneCiphertext: encryptSensitive(normalized.creditorPhone || "[inválido]", ENV.cookieSecret),
-      creditorEmailCiphertext: encryptSensitive(normalized.creditorEmail || "[inválido]", ENV.cookieSecret),
+      cpfCiphertext: encryptSensitive(persisted.cpf || "[inválido]", ENV.cookieSecret),
+      customerNameCiphertext: encryptSensitive(persisted.customerName || "[inválido]", ENV.cookieSecret),
+      creditorNameCiphertext: encryptSensitive(persisted.creditorName || "[inválido]", ENV.cookieSecret),
+      amountCents: persisted.amountCents,
+      dueDate: persisted.dueDate,
+      contractNumberCiphertext: encryptSensitive(persisted.contractNumber || "[inválido]", ENV.cookieSecret),
+      creditorPhoneCiphertext: encryptSensitive(persisted.creditorPhone || "[inválido]", ENV.cookieSecret),
+      creditorEmailCiphertext: encryptSensitive(persisted.creditorEmail || "[inválido]", ENV.cookieSecret),
+      linkCiphertext: encryptSensitive(persisted.link || "[inválido]", ENV.cookieSecret),
       status: valid ? "PENDING" as const : "INVALID" as const,
       errorCode: valid ? null : `ROW_${index + 2}:${normalized.errors[0]?.code ?? "INVALID_ROW"}`,
       validationCode: normalized.errors[0]?.code ?? "INVALID_ROW",

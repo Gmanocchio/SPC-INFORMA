@@ -43,7 +43,7 @@ Os fluxos de login e recuperação utilizam mensagens neutras para reduzir enume
 
 ### 2.2 Importação e confirmação de campanha
 
-`campaigns.layout` disponibiliza o mesmo modelo CSV para SMS, e-mail, WhatsApp e RCS. O arquivo possui, nesta ordem, as colunas `CPF`, `Nome do cliente (primeiro nome)`, `Valor da dívida`, `Vencimento da dívida`, `Número do contrato`, `Telefone de contato do credor` e `E-mail de contato do credor`. `campaigns.import` aceita CSV ou XLSX em base64, exige exatamente esse layout, normaliza e persiste os sete campos, aplica uma chave UUID de idempotência e cria a campanha para revisão. `campaigns.confirm` exige confirmação literal e executa as regras financeiras antes de liberar a campanha para fila ou agendamento. O processamento posterior reivindica destinatários atomicamente, reconstrói as sete variáveis para renderizar o template e limita tentativas transitórias.
+`campaigns.layout` disponibiliza o mesmo modelo para SMS, e-mail, WhatsApp e RCS. Os arquivos CSV e XLSX possuem, nesta ordem, as colunas `CPF`, `Nome do cliente`, `Nome do credor`, `Valor`, `Data de vencimento`, `Número do contrato`, `Telefone do credor`, `E-mail do credor` e `Link`. `campaigns.import` aceita CSV ou XLSX em base64, exige exatamente esse layout, normaliza e persiste os nove campos, aplica uma chave UUID de idempotência e cria a campanha para revisão. `campaigns.confirm` exige confirmação literal e executa as regras financeiras antes de liberar a campanha para fila ou agendamento. O processamento posterior reivindica destinatários atomicamente, reconstrói as nove variáveis para renderizar o template e limita tentativas transitórias.
 
 ## 3. Webhook de retorno do broker
 

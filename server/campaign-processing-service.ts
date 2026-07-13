@@ -45,21 +45,31 @@ function targetFor(recipient: typeof campaignRecipients.$inferSelect) {
 export function variablesFor(recipient: typeof campaignRecipients.$inferSelect): Record<string, string> {
   if (
     recipient.cpfCiphertext
-    && recipient.firstNameCiphertext
-    && recipient.debtAmountCents !== null
-    && recipient.debtDueDate
+    && recipient.customerNameCiphertext
+    && recipient.creditorNameCiphertext
+    && recipient.amountCents !== null
+    && recipient.dueDate
     && recipient.contractNumberCiphertext
     && recipient.creditorPhoneCiphertext
     && recipient.creditorEmailCiphertext
+    && recipient.linkCiphertext
   ) {
+    const customerName = decryptSensitive(recipient.customerNameCiphertext, ENV.cookieSecret);
+    const amount = formatDebtAmountCents(recipient.amountCents);
+    const dueDate = formatDebtDueDate(recipient.dueDate);
     return {
       cpf: decryptSensitive(recipient.cpfCiphertext, ENV.cookieSecret),
-      primeiro_nome: decryptSensitive(recipient.firstNameCiphertext, ENV.cookieSecret),
-      valor_divida: formatDebtAmountCents(recipient.debtAmountCents),
-      vencimento_divida: formatDebtDueDate(recipient.debtDueDate),
+      nome_cliente: customerName,
+      nome_credor: decryptSensitive(recipient.creditorNameCiphertext, ENV.cookieSecret),
+      valor: amount,
+      data_vencimento: dueDate,
       numero_contrato: decryptSensitive(recipient.contractNumberCiphertext, ENV.cookieSecret),
       telefone_credor: decryptSensitive(recipient.creditorPhoneCiphertext, ENV.cookieSecret),
       email_credor: decryptSensitive(recipient.creditorEmailCiphertext, ENV.cookieSecret),
+      link: decryptSensitive(recipient.linkCiphertext, ENV.cookieSecret),
+      primeiro_nome: customerName.split(/\s+/)[0] ?? customerName,
+      valor_divida: amount,
+      vencimento_divida: dueDate,
     };
   }
   if (!recipient.variablesCiphertext) return {};

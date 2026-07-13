@@ -44,6 +44,7 @@ import {
 import { QueryErrorState } from "@/components/QueryErrorState";
 import { campaignFormAfterOwnerChange, creditorsForCampaignOwner } from "@/lib/campaign-options";
 import { trpc } from "@/lib/trpc";
+import { campaignImportCsvHeader, campaignImportHeaderRow } from "@shared/template-variables";
 
 type Channel = "SMS" | "EMAIL" | "WHATSAPP" | "RCS";
 type ImportSummary = {
@@ -230,10 +231,21 @@ export default function Campaigns() {
     }
   }
 
-  function downloadLayout() {
+  async function downloadLayout(format: "csv" | "xlsx") {
     const spec = layout.data;
     if (!spec) return;
-    const blob = new Blob([`\uFEFF${spec.columns.join(spec.separator)}\r\n`], {
+    const columns = campaignImportHeaderRow(spec.columns);
+    if (format === "xlsx") {
+      const XLSX = await import("xlsx");
+      const sheet = XLSX.utils.aoa_to_sheet([columns]);
+      sheet["!cols"] = columns.map(column => ({ wch: Math.max(18, column.length + 2) }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, "Destinatários");
+      XLSX.writeFile(workbook, spec.filename.replace(/\.csv$/i, ".xlsx"), { compression: true });
+      toast.success("Modelo XLSX baixado com as nove colunas obrigatórias.");
+      return;
+    }
+    const blob = new Blob([campaignImportCsvHeader(columns, spec.separator)], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -242,6 +254,7 @@ export default function Campaigns() {
     anchor.download = spec.filename;
     anchor.click();
     URL.revokeObjectURL(url);
+    toast.success("Modelo CSV baixado com as nove colunas obrigatórias.");
   }
 
   return (
@@ -358,11 +371,16 @@ export default function Campaigns() {
                   />
                 </Field>
                 <div className="space-y-2 sm:col-span-2">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <Label>Arquivo de destinatários</Label>
-                    <Button type="button" size="sm" variant="ghost" onClick={downloadLayout}>
-                      <Download className="size-4" /> Baixar modelo padrão
-                    </Button>
+                    <div className="flex items-center gap-1" aria-label="Baixar modelo padrão">
+                      <Button type="button" size="sm" variant="ghost" onClick={() => void downloadLayout("csv")}>
+                        <Download className="size-4" /> Modelo CSV
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => void downloadLayout("xlsx")}>
+                        <FileSpreadsheet className="size-4" /> Modelo XLSX
+                      </Button>
+                    </div>
                   </div>
                   <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs leading-5 text-slate-600">
                     <p className="font-semibold text-slate-800">

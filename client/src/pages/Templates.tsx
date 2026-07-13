@@ -119,7 +119,7 @@ export default function Templates() {
             <div className="eyebrow"><FileText className="size-4" /> Conteúdo homologado SPC</div>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">Templates</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Centralize mensagens versionadas para os quatro canais. Variáveis dinâmicas usam o formato <code className="rounded bg-blue-50 px-1.5 py-0.5 text-[#004a99]">{"{{primeiro_nome}}"}</code>.
+              Centralize mensagens versionadas para os quatro canais. Variáveis dinâmicas usam o formato <code className="rounded bg-blue-50 px-1.5 py-0.5 text-[#004a99]">{"{{nome_cliente}}"}</code>.
             </p>
           </div>
 
@@ -212,7 +212,7 @@ export default function Templates() {
                     className="min-h-44 font-mono text-sm"
                     value={form.content}
                     onChange={event => setForm({ ...form, content: event.target.value })}
-                    placeholder="Olá {{primeiro_nome}}, sua dívida de {{valor_divida}} vence em {{vencimento_divida}}."
+                    placeholder="Olá {{nome_cliente}}, o valor de {{valor}} com {{nome_credor}} vence em {{data_vencimento}}. Acesse: {{link}}"
                   />
                 </div>
 

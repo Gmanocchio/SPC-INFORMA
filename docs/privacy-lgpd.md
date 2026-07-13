@@ -12,9 +12,9 @@ A LGPD disciplina o tratamento de dados pessoais em meios digitais e protege lib
 
 | Princípio operacional | Aplicação na plataforma |
 | --- | --- |
-| **Minimização** | Importações aceitam somente o layout multicanal aprovado de sete campos: CPF, primeiro nome, valor e vencimento da dívida, número do contrato, telefone e e-mail do credor. Campos ausentes, extras ou fora da ordem são rejeitados. |
+| **Minimização** | Importações aceitam somente o layout multicanal aprovado de nove campos: CPF, nome do cliente, nome do credor, valor, data de vencimento, número do contrato, telefone do credor, e-mail do credor e link. Campos ausentes, extras ou fora da ordem são rejeitados. |
 | **Segregação** | Consultas e mutações são limitadas pela organização e pelo perfil do usuário; a matriz está em [`security-access-matrix.md`](./security-access-matrix.md). |
-| **Confidencialidade** | CPF, primeiro nome, contrato, contatos do credor e JSON auxiliar de destinatários são cifrados em repouso; credenciais de brokers e segredos de API também são protegidos, e respostas administrativas não devolvem o segredo integral. |
+| **Confidencialidade** | CPF, nomes do cliente e do credor, contrato, contatos do credor, link e JSON auxiliar de destinatários são cifrados em repouso; credenciais de brokers e segredos de API também são protegidos, e respostas administrativas não devolvem o segredo integral. |
 | **Rastreabilidade** | Autenticação, cadastros, precificação, chaves, campanhas, templates e brokers geram eventos de auditoria sem registrar senha, código 2FA ou segredo completo. |
 | **Redução de exposição** | Dashboards usam agregações; dados pessoais não são necessários para indicadores operacionais. Logs devem usar identificadores técnicos e mensagens sanitizadas. |
 
@@ -23,7 +23,7 @@ A LGPD disciplina o tratamento de dados pessoais em meios digitais e protege lib
 | Categoria | Finalidade técnica | Proteção atual | Retenção recomendada |
 | --- | --- | --- | --- |
 | Nome, e-mail, telefone e CPF de usuários | Identidade, autenticação, autorização e contato operacional | Senha com hash; sessão revogável; 2FA; escopo por organização | Enquanto a conta estiver ativa e pelo prazo necessário à defesa de direitos, conforme política jurídica |
-| CPF, primeiro nome, valor e vencimento da dívida, número do contrato, telefone e e-mail do credor | Identificação multicanal, validação da base e renderização das sete variáveis do template | Campos textuais sensíveis e JSON auxiliar cifrados; valor em centavos e data em formato canônico; acesso por campanha escopada; não usados em dashboards | 90 dias após conclusão terminal da campanha, configurável; depois os campos pessoais, financeiros e auxiliares são removidos ou anonimizados |
+| CPF, nome do cliente, nome do credor, valor, data de vencimento, número do contrato, telefone do credor, e-mail do credor e link | Identificação multicanal, validação da base e renderização das nove variáveis do template | Campos textuais sensíveis e JSON auxiliar cifrados; valor em centavos e data em formato canônico; acesso por campanha escopada; não usados em dashboards | 90 dias após conclusão terminal da campanha, configurável; depois os campos pessoais, financeiros e auxiliares são removidos ou anonimizados |
 | Arquivo de importação | Criação e validação de destinatários | Referência privada no armazenamento | 30 dias após conclusão terminal; depois a referência é descartada e o objeto fica inacessível pela aplicação |
 | Eventos de entrega | Comprovação, métricas e diagnóstico | Identificadores internos, digest do payload e estado monotônico | 365 dias, configurável |
 | Recibos de webhook | Idempotência e proteção contra repetição | Identificador do evento, broker e digest | 90 dias, configurável |
@@ -38,7 +38,7 @@ Os prazos são carregados no início de cada manutenção pelas variáveis abaix
 | `RETENTION_AUTH_CHALLENGE_DAYS` | 7 | Desafios de 2FA e recuperação expirados |
 | `RETENTION_AUTH_SESSION_DAYS` | 30 | Sessões expiradas ou revogadas |
 | `RETENTION_IMPORT_FILE_DAYS` | 30 | Referências de arquivos de campanhas terminais |
-| `RETENTION_RECIPIENT_PII_DAYS` | 90 | Sete campos do destinatário, destino técnico e variáveis auxiliares |
+| `RETENTION_RECIPIENT_PII_DAYS` | 90 | Nove campos do destinatário, destino técnico e variáveis auxiliares |
 | `RETENTION_DELIVERY_EVENT_DAYS` | 365 | Eventos detalhados de entrega |
 | `RETENTION_WEBHOOK_RECEIPT_DAYS` | 90 | Recibos usados para idempotência |
 | `RETENTION_AUDIT_CONTEXT_DAYS` | 730 | Metadados, IP e agente de usuário em auditoria |

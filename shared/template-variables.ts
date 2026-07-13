@@ -7,24 +7,31 @@ export const TEMPLATE_VARIABLES = [
     preview: "000.000.000-00",
   },
   {
-    key: "primeiro_nome",
-    column: "Nome do cliente (primeiro nome)",
-    label: "Primeiro nome do cliente",
-    description: "Primeiro nome usado para personalizar a mensagem.",
-    preview: "Cliente",
+    key: "nome_cliente",
+    column: "Nome do cliente",
+    label: "Nome do cliente",
+    description: "Nome completo do cliente usado na comunicação.",
+    preview: "Ana Maria da Silva",
   },
   {
-    key: "valor_divida",
-    column: "Valor da dívida",
-    label: "Valor da dívida",
-    description: "Valor da dívida normalizado em reais.",
+    key: "nome_credor",
+    column: "Nome do credor",
+    label: "Nome do credor",
+    description: "Nome do credor responsável pelo contrato.",
+    preview: "Credor Exemplo",
+  },
+  {
+    key: "valor",
+    column: "Valor",
+    label: "Valor",
+    description: "Valor da cobrança normalizado em reais.",
     preview: "R$ 1.234,56",
   },
   {
-    key: "vencimento_divida",
-    column: "Vencimento da dívida",
-    label: "Vencimento da dívida",
-    description: "Data de vencimento da dívida no formato brasileiro.",
+    key: "data_vencimento",
+    column: "Data de vencimento",
+    label: "Data de vencimento",
+    description: "Data de vencimento no formato brasileiro.",
     preview: "31/12/2026",
   },
   {
@@ -36,17 +43,24 @@ export const TEMPLATE_VARIABLES = [
   },
   {
     key: "telefone_credor",
-    column: "Telefone do credor",
-    label: "Telefone do credor",
-    description: "Número de contato disponibilizado pelo credor.",
+    column: "Números de contato do credor (telefone)",
+    label: "Números de contato do credor",
+    description: "Um ou mais telefones do credor, separados por ponto e vírgula.",
     preview: "(11) 4000-0000",
   },
   {
     key: "email_credor",
-    column: "E-mail do credor",
-    label: "E-mail do credor",
+    column: "E-mail de contato do credor",
+    label: "E-mail de contato do credor",
     description: "E-mail de contato disponibilizado pelo credor.",
     preview: "contato@credor.com.br",
+  },
+  {
+    key: "link",
+    column: "Link",
+    label: "Link",
+    description: "Endereço HTTPS de acesso disponibilizado ao cliente.",
+    preview: "https://exemplo.com.br/negociacao",
   },
 ] as const;
 
@@ -54,6 +68,14 @@ export type TemplateVariableKey = (typeof TEMPLATE_VARIABLES)[number]["key"];
 
 export const TEMPLATE_VARIABLE_KEYS = TEMPLATE_VARIABLES.map(item => item.key);
 export const CAMPAIGN_IMPORT_COLUMNS = TEMPLATE_VARIABLES.map(item => item.column);
+
+export function campaignImportHeaderRow(columns: readonly string[] = CAMPAIGN_IMPORT_COLUMNS) {
+  return [...columns];
+}
+
+export function campaignImportCsvHeader(columns: readonly string[] = CAMPAIGN_IMPORT_COLUMNS, separator = ";") {
+  return `\uFEFF${campaignImportHeaderRow(columns).join(separator)}\r\n`;
+}
 
 export function formatDebtAmountCents(value: number) {
   const absolute = Math.abs(value);
@@ -67,7 +89,8 @@ export function formatDebtDueDate(value: string) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
 }
 
-const allowedTemplateVariables = new Set<string>(TEMPLATE_VARIABLE_KEYS);
+export const LEGACY_TEMPLATE_VARIABLE_KEYS = ["primeiro_nome", "valor_divida", "vencimento_divida"] as const;
+const allowedTemplateVariables = new Set<string>([...TEMPLATE_VARIABLE_KEYS, ...LEGACY_TEMPLATE_VARIABLE_KEYS]);
 const templateVariableExpression = /{{\s*([A-Za-z_][A-Za-z0-9_.-]{0,49})\s*}}/g;
 
 export function templateVariableToken(key: TemplateVariableKey) {

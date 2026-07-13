@@ -119,3 +119,12 @@
 - [x] Registrar o limite da validação autenticada quando não houver sessão SPC_ADMIN disponível, sem substituir a regressão automatizada do componente
 - [x] Tornar explícitos no teste de interface os valores seguros de Tipo, Vinculado a, Modelo financeiro e Situação nos modos criação e edição
 - [x] Persistir nota técnica informando que nenhum navegador ou sessão do usuário foi acessado e detalhando a evidência automatizada substituta
+- [x] Substituir o contrato padrão de destinatários por CPF, nome do cliente, nome do credor, valor, data de vencimento, número de contrato, telefone do credor, e-mail do credor e link
+- [x] Atualizar os modelos CSV e XLSX de download e a validação de importação para os nove campos na mesma ordem
+- [x] Persistir os nove campos por destinatário e disponibilizá-los no processamento e na renderização das campanhas
+- [x] Atualizar o seletor de variáveis dos templates de E-mail, SMS, WhatsApp e RCS com os nove campos padronizados
+- [x] Adicionar testes de regressão para modelo, importação, persistência, variáveis e renderização multicanal, com validação de tipos, suíte, build e interface
+- [x] Testar o conteúdo exato do cabeçalho gerado para CSV e da primeira linha usada no XLSX com as nove colunas na ordem canônica
+- [x] Testar explicitamente que o schema e o mapeamento de persistência contêm os nove campos por destinatário
+- [x] Executar a renderização das nove variáveis em regressão parametrizada para E-mail, SMS, WhatsApp e RCS
+- [x] Inspecionar e registrar o trecho final da regressão parametrizada que cobre os quatro canais e as nove variáveis, com nova execução da suíte
