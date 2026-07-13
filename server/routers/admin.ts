@@ -24,6 +24,7 @@ const organizationFields = {
   billingModel: z.enum(["PREPAID", "POSTPAID"]),
   balanceCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
   creditLimitCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+  linkedToOrganizationId: z.number().int().positive().nullable().optional(),
 };
 
 export const adminRouter = router({

@@ -18,6 +18,7 @@ export const organizations = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     parentOrganizationId: int("parentOrganizationId"),
+    linkedToOrganizationId: int("linkedToOrganizationId"),
     type: mysqlEnum("type", ["SPC_BRASIL", "CDL", "DISTRIBUTOR", "CREDITOR"])
       .notNull(),
     legalName: varchar("legalName", { length: 180 }).notNull(),
@@ -52,6 +53,7 @@ export const organizations = mysqlTable(
   table => [
     uniqueIndex("organizations_cnpj_uq").on(table.cnpj),
     index("organizations_parent_idx").on(table.parentOrganizationId),
+    index("organizations_linked_idx").on(table.linkedToOrganizationId),
     index("organizations_type_status_idx").on(table.type, table.status),
   ],
 );

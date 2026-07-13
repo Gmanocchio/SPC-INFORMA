@@ -17,6 +17,7 @@ type Actor = {
 
 type OrganizationInput = {
   parentOrganizationId?: number | null;
+  linkedToOrganizationId?: number | null;
   type: "SPC_BRASIL" | "CDL" | "DISTRIBUTOR" | "CREDITOR";
   legalName: string;
   tradeName: string;
@@ -62,6 +63,7 @@ export async function listOrganizations(actor: Actor, input: { search?: string; 
   const projection = {
     id: organizations.id,
     parentOrganizationId: organizations.parentOrganizationId,
+    linkedToOrganizationId: organizations.linkedToOrganizationId,
     type: organizations.type,
     legalName: organizations.legalName,
     tradeName: organizations.tradeName,
@@ -99,9 +101,12 @@ export async function createOrganization(actor: Actor, input: OrganizationInput)
     throw new TRPCError({ code: "FORBIDDEN", message: "Administradores de organização podem cadastrar apenas credores vinculados." });
   }
   const parentOrganizationId = actor.role === "SPC_ADMIN" ? input.parentOrganizationId ?? null : actor.organizationId;
+  // Se usuário não é admin SPC e está criando credor, vincula automaticamente à sua organização
+  const linkedToOrganizationId = actor.role !== "SPC_ADMIN" && input.type === "CREDITOR" ? actor.organizationId : (input.linkedToOrganizationId ?? null);
   const result = await db.insert(organizations).values({
     ...input,
     parentOrganizationId,
+    linkedToOrganizationId,
     cnpj: normalizeCnpj(input.cnpj),
     responsibleEmail: input.responsibleEmail.trim().toLowerCase(),
     responsiblePhone: normalizePhone(input.responsiblePhone),

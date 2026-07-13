@@ -26,7 +26,7 @@ export default function Organizations() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ type: "CREDITOR" as "SPC_BRASIL" | "CDL" | "DISTRIBUTOR" | "CREDITOR", legalName: "", tradeName: "", cnpj: "", responsibleName: "", responsibleEmail: "", responsiblePhone: "", postalCode: "", street: "", streetNumber: "", addressExtra: "", district: "", city: "", state: "", billingModel: "PREPAID" as "PREPAID" | "POSTPAID", balance: "0", creditLimit: "0", status: "ACTIVE" as "ACTIVE" | "INACTIVE" | "SUSPENDED" });
+  const [form, setForm] = useState({ type: "CREDITOR" as "SPC_BRASIL" | "CDL" | "DISTRIBUTOR" | "CREDITOR", legalName: "", tradeName: "", cnpj: "", responsibleName: "", responsibleEmail: "", responsiblePhone: "", postalCode: "", street: "", streetNumber: "", addressExtra: "", district: "", city: "", state: "", billingModel: "PREPAID" as "PREPAID" | "POSTPAID", balance: "0", creditLimit: "0", status: "ACTIVE" as "ACTIVE" | "INACTIVE" | "SUSPENDED", linkedToOrganizationId: "" });
   const queryInput = useMemo(() => ({ search: search || undefined }), [search]);
   const organizations = trpc.admin.organizations.list.useQuery(queryInput);
   const isSpcAdmin = identity?.user.role === "SPC_ADMIN";
@@ -114,6 +114,7 @@ export default function Organizations() {
       billingModel: form.billingModel,
       balanceCents: cents(form.balance),
       creditLimitCents: cents(form.creditLimit),
+      linkedToOrganizationId: form.linkedToOrganizationId ? Number(form.linkedToOrganizationId) : null,
     });
   }
 
@@ -138,13 +139,15 @@ export default function Organizations() {
       balance: (org.balanceCents / 100).toFixed(2).replace(".", ","),
       creditLimit: (org.creditLimitCents / 100).toFixed(2).replace(".", ","),
       status: org.status,
+      linkedToOrganizationId: org.linkedToOrganizationId?.toString() ?? "",
     });
     setOpen(true);
   }
 
   function startCreating() {
     setEditingId(null);
-    setForm({ type: "CREDITOR", legalName: "", tradeName: "", cnpj: "", responsibleName: "", responsibleEmail: "", responsiblePhone: "", postalCode: "", street: "", streetNumber: "", addressExtra: "", district: "", city: "", state: "", billingModel: "PREPAID", balance: "0", creditLimit: "0", status: "ACTIVE" });
+    const linkedId = isSpcAdmin ? "" : identity?.user.organizationId?.toString() ?? "";
+    setForm({ type: "CREDITOR", legalName: "", tradeName: "", cnpj: "", responsibleName: "", responsibleEmail: "", responsiblePhone: "", postalCode: "", street: "", streetNumber: "", addressExtra: "", district: "", city: "", state: "", billingModel: "PREPAID", balance: "0", creditLimit: "0", status: "ACTIVE", linkedToOrganizationId: linkedId });
   }
 
   return (
@@ -158,6 +161,7 @@ export default function Organizations() {
                 <DialogHeader><DialogTitle>{editingId ? "Editar empresa" : "Cadastrar empresa"}</DialogTitle><DialogDescription>{editingId ? "Atualize os dados permitidos. Tipo e CNPJ permanecem vinculados ao cadastro original." : "Informe dados cadastrais, responsável e regime financeiro. Campos obrigatórios são validados no servidor."}</DialogDescription></DialogHeader>
                 <form className="grid gap-4 pt-2 sm:grid-cols-2" onSubmit={submit}>
                   {isSpcAdmin && <Field label="Tipo"><Select disabled={Boolean(editingId)} value={form.type} onValueChange={value => setForm(current => ({ ...current, type: value as typeof form.type }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="CDL">CDL</SelectItem><SelectItem value="DISTRIBUTOR">Distribuidora</SelectItem><SelectItem value="CREDITOR">Credor</SelectItem><SelectItem value="SPC_BRASIL">SPC Brasil</SelectItem></SelectContent></Select></Field>}
+                  {form.type === "CREDITOR" && isSpcAdmin && <Field label="Vinculado a"><Select value={form.linkedToOrganizationId} onValueChange={value => setForm(current => ({ ...current, linkedToOrganizationId: value }))}><SelectTrigger><SelectValue placeholder="Selecione uma CDL, Distribuidora ou deixe em branco para SPC" /></SelectTrigger><SelectContent><SelectItem value="">SPC Brasil</SelectItem>{organizations.data?.filter(o => o.type === "CDL" || o.type === "DISTRIBUTOR").map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.tradeName} ({typeLabels[o.type]})</SelectItem>)}</SelectContent></Select></Field>}
                   <Field label="CNPJ"><Input required disabled={Boolean(editingId)} value={form.cnpj} onChange={event => setForm({ ...form, cnpj: event.target.value })} placeholder="00.000.000/0000-00" /></Field>
                   <Field label="Razão social"><Input required value={form.legalName} onChange={event => setForm({ ...form, legalName: event.target.value })} /></Field>
                   <Field label="Nome fantasia"><Input required value={form.tradeName} onChange={event => setForm({ ...form, tradeName: event.target.value })} /></Field>
