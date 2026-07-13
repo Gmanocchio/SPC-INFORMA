@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { campaignRecipients } from "../drizzle/schema";
+import { campaignRecipients, campaigns, messageTemplates } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { brokerHeaders, brokerTimeoutMs, dispatchUrl, renderTemplate, variablesFor } from "./campaign-processing-service";
+import { brokerHeaders, brokerTimeoutMs, dispatchUrl, renderTemplate, templateForCampaign, variablesFor } from "./campaign-processing-service";
 import { assertSafeBrokerEndpoint } from "./broker-service";
 import { encryptSensitive } from "./security";
 
@@ -24,6 +24,25 @@ describe("processamento de campanhas", () => {
       "{{primeiro_nome}} | {{cpf}} | {{valor_divida}} | {{vencimento_divida}} | {{numero_contrato}} | {{telefone_credor}} | {{email_credor}}",
       variables,
     )).toBe("Ana | 52998224725 | R$ 1.234,56 | 31/12/2026 | CTR-2026-001 | 1140001234 | cobranca@credor.com.br");
+  });
+
+  it("usa o snapshot da campanha mesmo após o template ativo receber uma nova versão", () => {
+    const campaign = {
+      templateSubjectSnapshot: "Assunto homologado v7",
+      templateContentSnapshot: "Conteúdo homologado v7",
+      templateVersionSnapshot: 7,
+    } as unknown as typeof campaigns.$inferSelect;
+    const currentTemplate = {
+      subject: "Assunto revisado v8",
+      content: "Conteúdo revisado v8",
+      version: 8,
+    } as unknown as typeof messageTemplates.$inferSelect;
+
+    expect(templateForCampaign(campaign, currentTemplate)).toEqual({
+      subject: "Assunto homologado v7",
+      content: "Conteúdo homologado v7",
+      version: 7,
+    });
   });
 
   it("reconstrói as variáveis pelas colunas persistentes e não pelo JSON legado", () => {

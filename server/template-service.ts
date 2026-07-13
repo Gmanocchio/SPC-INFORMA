@@ -1,6 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { messageTemplates } from "../drizzle/schema";
+import { campaigns, messageTemplates } from "../drizzle/schema";
 import {
   extractTemplateVariables,
   findUnsupportedTemplateVariables,
@@ -86,33 +86,35 @@ export async function createTemplate(actor: DomainActor, input: { name: string; 
 export async function updateTemplate(actor: DomainActor, id: number, input: { name: string; channel: Channel; subject?: string | null; content: string; status: "DRAFT" | "ACTIVE" | "ARCHIVED" }) {
   validateTemplateInput(input.channel, input.subject, input.content);
   const db = await requireDb();
-  const existing = await db.select().from(messageTemplates).where(eq(messageTemplates.id, id)).limit(1);
-  if (!existing[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Template não encontrado." });
-  if (existing[0].status === "ARCHIVED") {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Templates arquivados não podem ser editados ou reativados." });
-  }
   const normalizedSubject = input.channel === "EMAIL" ? input.subject?.trim() ?? null : null;
-  if (existing[0].status === "ACTIVE") {
-    const contentChanged = existing[0].channel !== input.channel
-      || existing[0].subject !== normalizedSubject
-      || existing[0].content !== input.content.trim();
-    if (contentChanged || input.status === "DRAFT") {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "O conteúdo de um template ativo é imutável. Arquive-o e crie um novo rascunho para alterar a mensagem.",
-      });
-    }
-  }
   const variables = extractTemplateVariables(input.subject, input.content);
-  await db.update(messageTemplates).set({
-    name: input.name.trim(),
-    channel: input.channel,
-    subject: normalizedSubject,
-    content: input.content.trim(),
-    variables,
-    status: input.status,
-    version: existing[0].version + 1,
-  }).where(eq(messageTemplates.id, id));
-  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "TEMPLATE_UPDATED", resourceType: "message_template", resourceId: id, metadata: { channel: input.channel, status: input.status, version: existing[0].version + 1 } });
+  const updatedVersion = await db.transaction(async tx => {
+    const [existing] = await tx.select().from(messageTemplates).where(eq(messageTemplates.id, id)).limit(1);
+    if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Template não encontrado." });
+    if (existing.status === "ARCHIVED") {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Templates arquivados não podem ser editados ou reativados." });
+    }
+    await tx.update(campaigns).set({
+      templateNameSnapshot: existing.name,
+      templateVersionSnapshot: existing.version,
+      templateSubjectSnapshot: existing.subject,
+      templateContentSnapshot: existing.content,
+      templateVariablesSnapshot: existing.variables,
+    }).where(and(eq(campaigns.templateId, id), isNull(campaigns.templateContentSnapshot)));
+    const result = await tx.update(messageTemplates).set({
+      name: input.name.trim(),
+      channel: input.channel,
+      subject: normalizedSubject,
+      content: input.content.trim(),
+      variables,
+      status: input.status,
+      version: existing.version + 1,
+    }).where(and(eq(messageTemplates.id, id), eq(messageTemplates.version, existing.version)));
+    if (Number(result[0]?.affectedRows ?? 0) !== 1) {
+      throw new TRPCError({ code: "CONFLICT", message: "O template foi alterado por outro usuário. Recarregue e tente novamente." });
+    }
+    return existing.version + 1;
+  });
+  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "TEMPLATE_UPDATED", resourceType: "message_template", resourceId: id, metadata: { channel: input.channel, status: input.status, version: updatedVersion } });
   return { success: true as const };
 }

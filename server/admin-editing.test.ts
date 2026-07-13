@@ -39,9 +39,12 @@ describe("edição administrativa de registros persistidos", () => {
     const router = source("server/routers/commercial.ts");
     const service = source("server/template-service.ts");
     expect(router).toContain("update: spcAdminProcedure");
-    expect(service).toContain('existing[0].status === "ARCHIVED"');
-    expect(service).toContain("O conteúdo de um template ativo é imutável.");
-    expect(service).toContain("version: existing[0].version + 1");
+    expect(service).toContain('existing.status === "ARCHIVED"');
+    expect(service).not.toContain('existing.status === "ACTIVE"');
+    expect(service).not.toContain("O conteúdo de um template ativo é imutável.");
+    expect(service).toContain("version: existing.version + 1");
+    expect(service).toContain("templateContentSnapshot: existing.content");
+    expect(service).toContain("isNull(campaigns.templateContentSnapshot)");
     expect(service).toContain('action: "TEMPLATE_UPDATED"');
   });
 
@@ -58,6 +61,12 @@ describe("edição administrativa de registros persistidos", () => {
     expect(campaigns).toContain("Bloqueada após início");
     expect(templates).toContain("trpc.commercial.templates.update.useMutation");
     expect(templates).toContain("startEditingTemplate");
+    expect(templates).toContain("A alteração cria uma nova versão. Campanhas já vinculadas mantêm a mensagem da versão anterior.");
+    expect(templates).toContain("Salvar nova versão");
+    expect(templates).toContain('toast.success("Template atualizado e nova versão registrada na auditoria.")');
+    expect(templates).toContain("update.isPending");
+    expect(templates).toContain("onError: error => toast.error(error.message)");
+    expect(templates).not.toContain("template ativo é imutável");
   });
 
   it("preserva as operações seguras já existentes nos demais cadastros administrativos", () => {

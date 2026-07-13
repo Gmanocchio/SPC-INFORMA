@@ -130,7 +130,7 @@ export default function Templates() {
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingTemplateId ? "Editar template homologado" : "Novo template homologado"}</DialogTitle>
-                <DialogDescription>{editingTemplateId ? "A alteração preserva o histórico e cria uma nova versão do template." : "Selecione variáveis compatíveis com as colunas da planilha e acompanhe a pré-visualização."}</DialogDescription>
+                <DialogDescription>{editingTemplateId ? "A alteração cria uma nova versão. Campanhas já vinculadas mantêm a mensagem da versão anterior." : "Selecione variáveis compatíveis com as colunas da planilha e acompanhe a pré-visualização."}</DialogDescription>
               </DialogHeader>
 
               <form className="space-y-4" onSubmit={submit}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCampaignImportColumns, campaignImportLayout, normalizeCampaignImportRow } from "./campaign-service";
+import { assertCampaignImportColumns, campaignImportLayout, campaignTemplateSnapshotValues, normalizeCampaignImportRow } from "./campaign-service";
 import { validateTemplateInput } from "./template-service";
 import {
   CAMPAIGN_IMPORT_COLUMNS,
@@ -18,6 +18,22 @@ describe("variáveis homologadas de template", () => {
     "Telefone do credor": "(11) 4000-1234",
     "E-mail do credor": "COBRANCA@CREDOR.COM.BR",
   };
+
+  it("preserva nome, versão, assunto, conteúdo e variáveis ao vincular o template à campanha", () => {
+    expect(campaignTemplateSnapshotValues({
+      name: "Cobrança homologada",
+      version: 4,
+      subject: "Olá {{primeiro_nome}}",
+      content: "Contrato {{numero_contrato}}",
+      variables: ["primeiro_nome", "numero_contrato"],
+    } as never)).toEqual({
+      templateNameSnapshot: "Cobrança homologada",
+      templateVersionSnapshot: 4,
+      templateSubjectSnapshot: "Olá {{primeiro_nome}}",
+      templateContentSnapshot: "Contrato {{numero_contrato}}",
+      templateVariablesSnapshot: ["primeiro_nome", "numero_contrato"],
+    });
+  });
 
   it.each(["SMS", "EMAIL", "WHATSAPP", "RCS"] as const)("mantém o seletor alinhado ao layout de %s", channel => {
     expect(campaignImportLayout(channel).columns).toEqual(CAMPAIGN_IMPORT_COLUMNS);

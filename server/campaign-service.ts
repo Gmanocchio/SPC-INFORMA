@@ -159,6 +159,17 @@ async function assertCreditorAndTemplate(organizationId: number, creditorOrganiz
   }
   const [template] = await db.select().from(messageTemplates).where(and(eq(messageTemplates.id, templateId), eq(messageTemplates.status, "ACTIVE"), eq(messageTemplates.channel, channel))).limit(1);
   if (!template) throw new TRPCError({ code: "BAD_REQUEST", message: "Template ativo incompatível com o canal selecionado." });
+  return template;
+}
+
+export function campaignTemplateSnapshotValues(template: typeof messageTemplates.$inferSelect) {
+  return {
+    templateNameSnapshot: template.name,
+    templateVersionSnapshot: template.version,
+    templateSubjectSnapshot: template.subject,
+    templateContentSnapshot: template.content,
+    templateVariablesSnapshot: template.variables,
+  };
 }
 
 export function campaignImportLayout(_channel: Channel) {
@@ -204,7 +215,7 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
   if (!file.length || file.length > MAX_FILE_BYTES) throw new TRPCError({ code: "BAD_REQUEST", message: "O arquivo deve possuir até 8 MB." });
   const organization = await resolveCampaignOrganization(actor, input.organizationId);
   const isSpc = organization.type === "SPC_BRASIL";
-  await assertCreditorAndTemplate(organization.id, input.creditorOrganizationId, input.templateId, input.channel, isSpc);
+  const template = await assertCreditorAndTemplate(organization.id, input.creditorOrganizationId, input.templateId, input.channel, isSpc);
   const unitPriceMicros = await resolveCampaignPrice(organization.id, input.creditorOrganizationId, input.channel, isSpc);
   const campaignId = randomUUID();
   const idempotencyKey = hmacToken(`${organization.id}:${input.idempotencyKey}`, ENV.cookieSecret);
@@ -274,6 +285,7 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
         creditorOrganizationId: input.creditorOrganizationId,
         createdByUserId: actor.id,
         templateId: input.templateId,
+        ...campaignTemplateSnapshotValues(template),
         uploadId,
         name: input.name.trim(),
         channel: input.channel,

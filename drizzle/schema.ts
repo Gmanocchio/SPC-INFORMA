@@ -274,6 +274,11 @@ export const campaigns = mysqlTable(
       .notNull()
       .references(() => organizations.id),
     templateId: int("templateId").notNull().references(() => messageTemplates.id),
+    templateNameSnapshot: varchar("templateNameSnapshot", { length: 160 }),
+    templateVersionSnapshot: int("templateVersionSnapshot"),
+    templateSubjectSnapshot: varchar("templateSubjectSnapshot", { length: 255 }),
+    templateContentSnapshot: text("templateContentSnapshot"),
+    templateVariablesSnapshot: json("templateVariablesSnapshot").$type<string[]>(),
     brokerId: int("brokerId").references(() => brokers.id),
     uploadId: varchar("uploadId", { length: 64 }).references(() => uploads.id),
     name: varchar("name", { length: 180 }).notNull(),

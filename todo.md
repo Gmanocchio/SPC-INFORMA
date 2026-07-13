@@ -90,3 +90,13 @@
 - [x] Permitir que o Administrador SPC Brasil edite templates já cadastrados para todos os canais
 - [x] Padronizar ações e formulários de edição nos demais cadastros administrativos aplicáveis
 - [x] Adicionar testes Vitest de permissão, validação, auditoria e regressão dos fluxos de edição
+- [x] Permitir que o Administrador SPC Brasil edite templates existentes e ativos sem bloqueio, preservando histórico e vínculos de campanhas
+- [x] Substituir a mensagem de imutabilidade por um fluxo transparente de edição versionada
+- [x] Adicionar teste de regressão para edição de template ativo pelo perfil SPC_ADMIN
+- [x] Persistir o snapshot e a versão do template na campanha para impedir alterações retroativas após a edição de um template ativo
+- [x] Cobrir com teste de regressão o vínculo histórico entre campanha e versão do template selecionado
+- [x] Validar diretamente a interface de Templates para edição de ativos, mensagens e estados de envio
+- [ ] Validar em sessão autenticada SPC_ADMIN a edição de um template ativo e os estados de envio, sucesso e erro — bloqueado até disponibilização de sessão válida com 2FA
+- [x] Registrar que a aceitação autenticada está bloqueada por ausência de uma sessão SPC_ADMIN válida
+- [x] Corrigir o relatório para registrar apenas o bloqueio atual da sessão SPC_ADMIN, sem negar a redefinição de senha já existente no histórico
+- [x] Documentar com precisão que houve uma redefinição anterior da senha administrativa e que não foi realizada nova alteração durante este ajuste

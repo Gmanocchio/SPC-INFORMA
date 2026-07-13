@@ -7,6 +7,7 @@ import { getDb } from "./db";
 import { decryptSensitive, sha256 } from "./security";
 
 type ProcessingOptions = { campaignLimit?: number; recipientLimit?: number; concurrency?: number };
+type DispatchTemplate = { subject: string | null; content: string; version: number };
 
 async function requireDb() {
   const db = await getDb();
@@ -16,6 +17,25 @@ async function requireDb() {
 
 export function renderTemplate(content: string, variables: Record<string, string>) {
   return content.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, key: string) => variables[key] ?? "");
+}
+
+export function templateForCampaign(
+  campaign: typeof campaigns.$inferSelect,
+  legacyTemplate?: typeof messageTemplates.$inferSelect | null,
+): DispatchTemplate | null {
+  if (campaign.templateContentSnapshot !== null && campaign.templateVersionSnapshot !== null) {
+    return {
+      subject: campaign.templateSubjectSnapshot,
+      content: campaign.templateContentSnapshot,
+      version: campaign.templateVersionSnapshot,
+    };
+  }
+  if (!legacyTemplate) return null;
+  return {
+    subject: legacyTemplate.subject,
+    content: legacyTemplate.content,
+    version: legacyTemplate.version,
+  };
 }
 
 function targetFor(recipient: typeof campaignRecipients.$inferSelect) {
@@ -67,7 +87,7 @@ export function brokerTimeoutMs(extra: Record<string, string | number | boolean 
   return Math.min(30_000, Math.max(1_000, Number(extra.timeoutMs) || 10_000));
 }
 
-async function dispatchRecipient(campaign: typeof campaigns.$inferSelect, template: typeof messageTemplates.$inferSelect, recipient: typeof campaignRecipients.$inferSelect, broker: NonNullable<Awaited<ReturnType<typeof getPreferredBrokerForDispatch>>>) {
+async function dispatchRecipient(campaign: typeof campaigns.$inferSelect, template: DispatchTemplate, recipient: typeof campaignRecipients.$inferSelect, broker: NonNullable<Awaited<ReturnType<typeof getPreferredBrokerForDispatch>>>) {
   const extra = broker.extraConfig;
   const variables = variablesFor(recipient);
   const destination = targetFor(recipient);
@@ -137,7 +157,11 @@ async function processCampaign(campaign: typeof campaigns.$inferSelect, recipien
     return { campaignId: campaign.id, failed: "NO_BROKER" };
   }
   await db.update(campaigns).set({ brokerId: broker.id }).where(eq(campaigns.id, campaign.id));
-  const [template] = await db.select().from(messageTemplates).where(eq(messageTemplates.id, campaign.templateId)).limit(1);
+  let template = templateForCampaign(campaign);
+  if (!template) {
+    const [legacyTemplate] = await db.select().from(messageTemplates).where(eq(messageTemplates.id, campaign.templateId)).limit(1);
+    template = templateForCampaign(campaign, legacyTemplate);
+  }
   if (!template) throw new Error(`Template ${campaign.templateId} não encontrado.`);
   const recipients = await db.select().from(campaignRecipients).where(and(eq(campaignRecipients.campaignId, campaign.id), eq(campaignRecipients.status, "PENDING"))).orderBy(asc(campaignRecipients.createdAt)).limit(recipientLimit);
   for (let offset = 0; offset < recipients.length; offset += concurrency) {
