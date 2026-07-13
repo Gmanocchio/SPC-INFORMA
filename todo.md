@@ -71,3 +71,8 @@
 - [x] Validar que códigos incorretos, expirados e reutilizados continuam sendo rejeitados após a correção
 - [x] Adicionar teste de integração do 2FA sem mockar a persistência crítica, cobrindo criação, leitura e consumo único do desafio
 - [x] Validar em teste automatizado que o código emitido por beginLogin é confirmado por completeLogin contra o registro persistido e invalidado após uso
+- [x] Adicionar botão de variáveis no editor de templates para E-mail, SMS, WhatsApp e RCS
+- [x] Exibir no seletor somente as variáveis permitidas e aceitas como colunas na planilha de importação
+- [x] Inserir a variável selecionada na posição atual do cursor sem interromper a continuação da digitação
+- [x] Atualizar imediatamente a detecção de variáveis e a pré-visualização após cada inserção
+- [x] Adicionar testes Vitest e validar visualmente o seletor de variáveis em desktop e celular

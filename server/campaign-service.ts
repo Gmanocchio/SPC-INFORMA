@@ -12,6 +12,7 @@ import {
   organizations,
   uploads,
 } from "../drizzle/schema";
+import { TEMPLATE_VARIABLE_KEYS } from "../shared/template-variables";
 import { writeAudit } from "./audit";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
@@ -105,7 +106,7 @@ async function assertCreditorAndTemplate(organizationId: number, creditorOrganiz
 
 export function campaignImportLayout(channel: Channel) {
   const target = channel === "EMAIL" ? "email" : "telefone";
-  return { filename: `modelo-notificadora-${channel.toLowerCase()}.csv`, columns: [target, "nome", "documento", "valor", "data_vencimento"], separator: ";", encoding: "UTF-8" };
+  return { filename: `modelo-notificadora-${channel.toLowerCase()}.csv`, columns: [target, ...TEMPLATE_VARIABLE_KEYS], separator: ";", encoding: "UTF-8" };
 }
 
 export async function listCampaignOptions(actor: DomainActor) {

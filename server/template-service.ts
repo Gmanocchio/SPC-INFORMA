@@ -1,8 +1,15 @@
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { messageTemplates } from "../drizzle/schema";
+import {
+  extractTemplateVariables,
+  findUnsupportedTemplateVariables,
+  TEMPLATE_VARIABLE_KEYS,
+} from "../shared/template-variables";
 import { writeAudit } from "./audit";
 import { getDb } from "./db";
+
+export { extractTemplateVariables } from "../shared/template-variables";
 
 export type DomainActor = {
   id: number;
@@ -18,25 +25,19 @@ async function requireDb() {
   return db;
 }
 
-export function extractTemplateVariables(subject: string | null | undefined, content: string) {
-  const values = new Set<string>();
-  const expression = /{{\s*([A-Za-z_][A-Za-z0-9_.-]{0,49})\s*}}/g;
-  for (const source of [subject ?? "", content]) {
-    expression.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = expression.exec(source)) !== null) {
-      if (match[1]) values.add(match[1]);
-    }
-  }
-  return Array.from(values).sort();
-}
-
-function validateTemplate(channel: Channel, subject: string | null | undefined, content: string) {
+export function validateTemplateInput(channel: Channel, subject: string | null | undefined, content: string) {
   if (channel === "EMAIL" && !subject?.trim()) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "O assunto é obrigatório para templates de e-mail." });
   }
   if (channel === "SMS" && content.length > 612) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "O template SMS excede o limite operacional de 612 caracteres." });
+  }
+  const unsupported = findUnsupportedTemplateVariables(subject, content);
+  if (unsupported.length) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Variáveis não disponíveis: ${unsupported.map(variable => `{{${variable}}}`).join(", ")}. Utilize: ${TEMPLATE_VARIABLE_KEYS.map(variable => `{{${variable}}}`).join(", ")}.`,
+    });
   }
 }
 
@@ -64,7 +65,7 @@ export async function listTemplates(actor: DomainActor) {
 }
 
 export async function createTemplate(actor: DomainActor, input: { name: string; channel: Channel; subject?: string | null; content: string; status: "DRAFT" | "ACTIVE" }) {
-  validateTemplate(input.channel, input.subject, input.content);
+  validateTemplateInput(input.channel, input.subject, input.content);
   const db = await requireDb();
   const variables = extractTemplateVariables(input.subject, input.content);
   const result = await db.insert(messageTemplates).values({
@@ -83,7 +84,7 @@ export async function createTemplate(actor: DomainActor, input: { name: string; 
 }
 
 export async function updateTemplate(actor: DomainActor, id: number, input: { name: string; channel: Channel; subject?: string | null; content: string; status: "DRAFT" | "ACTIVE" | "ARCHIVED" }) {
-  validateTemplate(input.channel, input.subject, input.content);
+  validateTemplateInput(input.channel, input.subject, input.content);
   const db = await requireDb();
   const existing = await db.select({ id: messageTemplates.id, version: messageTemplates.version }).from(messageTemplates).where(eq(messageTemplates.id, id)).limit(1);
   if (!existing[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Template não encontrado." });
