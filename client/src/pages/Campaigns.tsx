@@ -172,7 +172,7 @@ export default function Campaigns() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!file) return toast.error("Selecione um arquivo CSV ou XLSX.");
+    if (!file) return toast.error("Selecione um arquivo CSV, XLSX ou TXT.");
     if (file.size > 8 * 1024 * 1024) return toast.error("O arquivo deve possuir até 8 MB.");
     if (isSpc && !form.organizationId) return toast.error("Selecione a organização responsável.");
     if (!form.creditorOrganizationId || !form.templateId) {
@@ -360,13 +360,13 @@ export default function Campaigns() {
                   <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-5 text-center hover:bg-blue-50">
                     <Upload className="size-6 text-[#0066cc]" />
                     <span className="mt-2 font-semibold text-slate-900">
-                      {file ? file.name : "Selecione CSV ou XLSX"}
+                      {file ? file.name : "Selecione CSV, XLSX ou TXT"}
                     </span>
                     <span className="text-xs text-slate-500">Mesmo layout para SMS, e-mail, WhatsApp e RCS · Até 8 MB e 20.000 linhas</span>
                     <input
                       className="hidden"
                       type="file"
-                      accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      accept=".csv,.xlsx,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                       onChange={event => setFile(event.target.files?.[0] ?? null)}
                     />
                   </label>
