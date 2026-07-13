@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import {
   CalendarClock,
   CheckCircle2,
@@ -12,6 +11,7 @@ import {
   TriangleAlert,
   Upload,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,16 @@ export default function Campaigns() {
     () => creditorsForCampaignOwner(owners, options.data?.creditors ?? [], String(ownerId ?? ""), isSpc),
     [creditorsForCampaignOwner, isSpc, options.data?.creditors, ownerId, owners],
   );
+
+  // Se o usuário não é admin SPC, pré-seleciona o credor da sua organização
+  useEffect(() => {
+    if (!isSpc && creditors.length > 0) {
+      const userCreditor = creditors.find(c => c.id === identity?.user.organizationId);
+      if (userCreditor && !form.creditorOrganizationId) {
+        setForm(current => ({ ...current, creditorOrganizationId: String(userCreditor.id) }));
+      }
+    }
+  }, [creditors, isSpc, identity?.user.organizationId, form.creditorOrganizationId]);
 
   const importCampaign = trpc.campaigns.import.useMutation({
     onSuccess: async result => {
@@ -314,7 +324,7 @@ export default function Campaigns() {
                   <Select
                     value={form.creditorOrganizationId}
                     onValueChange={value => setForm({ ...form, creditorOrganizationId: value })}
-                    disabled={!ownerId || options.isFetching}
+                    disabled={!ownerId || options.isFetching || (!isSpc && !!form.creditorOrganizationId)}
                   >
                     <SelectTrigger><SelectValue placeholder={options.isFetching ? "Atualizando credores…" : "Selecione"} /></SelectTrigger>
                     <SelectContent>
