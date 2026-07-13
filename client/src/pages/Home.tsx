@@ -80,7 +80,7 @@ export default function Home() {
                 Governança e eficiência para toda a operação
               </div>
               <h1 className="text-balance text-4xl font-extrabold leading-[1.06] tracking-[-0.035em] sm:text-5xl lg:text-7xl">
-                Cobrança multicanal com <span className="text-[#FFD54A]">controle de ponta a ponta.</span>
+                Notificadora multicanal com <span className="text-[#FFD54A]">controle de ponta a ponta.</span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-blue-50/85 lg:text-xl">
                 Uma plataforma concebida para o ecossistema SPC Brasil gerenciar comunicações, preços, organizações e resultados com segurança e clareza operacional.
