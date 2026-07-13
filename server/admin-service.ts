@@ -70,6 +70,11 @@ export async function listOrganizations(actor: Actor, input: { search?: string; 
     responsibleEmail: organizations.responsibleEmail,
     responsiblePhone: organizations.responsiblePhone,
     logoUrl: organizations.logoUrl,
+    postalCode: organizations.postalCode,
+    street: organizations.street,
+    streetNumber: organizations.streetNumber,
+    addressExtra: organizations.addressExtra,
+    district: organizations.district,
     city: organizations.city,
     state: organizations.state,
     billingModel: organizations.billingModel,
@@ -207,13 +212,27 @@ export async function createUser(actor: Actor, input: UserInput) {
   return { id };
 }
 
-export async function updateUser(actor: Actor, id: number, input: { name?: string; phone?: string | null; role?: UserInput["role"]; status?: "INVITED" | "ACTIVE" | "INACTIVE" | "LOCKED" }) {
+export async function updateUser(actor: Actor, id: number, input: { name?: string; email?: string; phone?: string | null; role?: UserInput["role"]; status?: "INVITED" | "ACTIVE" | "INACTIVE" | "LOCKED" }) {
   const db = await requireDb();
   const target = (await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1))[0];
   if (!target || (actor.role !== "SPC_ADMIN" && target.organizationId !== actor.organizationId)) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado no seu escopo." });
   if (id === actor.id && (input.role || input.status === "INACTIVE")) throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode reduzir o próprio acesso ou desativar a própria conta." });
   if (actor.role !== "SPC_ADMIN" && input.role === "SPC_ADMIN") throw new TRPCError({ code: "FORBIDDEN", message: "Perfil não permitido." });
-  await db.update(users).set({ ...input, name: input.name?.trim(), phone: input.phone === undefined ? undefined : normalizePhone(input.phone) }).where(eq(users.id, id));
+  if (input.role === "SPC_ADMIN") {
+    const organization = await findOrganization(target.organizationId);
+    if (!organization || organization.type !== "SPC_BRASIL") throw new TRPCError({ code: "BAD_REQUEST", message: "Administradores SPC devem pertencer à organização SPC Brasil." });
+  }
+  try {
+    await db.update(users).set({
+      ...input,
+      name: input.name?.trim(),
+      email: input.email?.trim().toLowerCase(),
+      phone: input.phone === undefined ? undefined : normalizePhone(input.phone),
+    }).where(eq(users.id, id));
+  } catch (error) {
+    if (String(error).includes("users_email_uq")) throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com este e-mail." });
+    throw error;
+  }
   await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "USER_UPDATED", resourceType: "user", resourceId: id, metadata: { changedFields: Object.keys(input) } });
   return { success: true as const };
 }

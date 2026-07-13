@@ -44,6 +44,27 @@ export async function createApiKey(actor: DomainActor, input: { organizationId?:
   return { id, key: rawKey, displayedOnce: true as const };
 }
 
+export async function rotateApiKey(actor: DomainActor, id: number, input: { name: string; scopes: string[]; expiresAt?: Date | null }) {
+  const uniqueScopes = Array.from(new Set(input.scopes));
+  if (!uniqueScopes.length || uniqueScopes.some(scope => !allowedScopes.has(scope))) throw new TRPCError({ code: "BAD_REQUEST", message: "Escopos de API inválidos." });
+  if (input.expiresAt && input.expiresAt <= new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "A expiração deve estar no futuro." });
+  const db = await requireDb();
+  const current = await db.select({ id: apiKeys.id, organizationId: apiKeys.organizationId, revokedAt: apiKeys.revokedAt }).from(apiKeys).where(eq(apiKeys.id, id)).limit(1);
+  if (!current[0] || (actor.role !== "SPC_ADMIN" && current[0].organizationId !== actor.organizationId)) throw new TRPCError({ code: "NOT_FOUND", message: "Chave não encontrada no seu escopo." });
+  if (current[0].revokedAt) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Uma chave revogada não pode ser substituída." });
+  await resolveOrganizationId(actor, current[0].organizationId);
+  const prefix = createOpaqueToken(6).replace(/[^A-Za-z0-9]/g, "").slice(0, 8);
+  const rawKey = `ntf_${prefix}_${createOpaqueToken(32)}`;
+  const now = new Date();
+  const newId = await db.transaction(async tx => {
+    await tx.update(apiKeys).set({ revokedAt: now }).where(and(eq(apiKeys.id, id), isNull(apiKeys.revokedAt)));
+    const result = await tx.insert(apiKeys).values({ organizationId: current[0].organizationId, name: input.name.trim(), prefix, lastFour: rawKey.slice(-4), secretHash: sha256(rawKey), scopes: uniqueScopes, expiresAt: input.expiresAt ?? null, createdByUserId: actor.id });
+    return Number(result[0].insertId);
+  });
+  await writeAudit({ organizationId: current[0].organizationId, actorUserId: actor.id, action: "API_KEY_ROTATED", resourceType: "api_key", resourceId: newId, metadata: { replacedApiKeyId: id, name: input.name, scopes: uniqueScopes, expiresAt: input.expiresAt?.toISOString() ?? null } });
+  return { id: newId, key: rawKey, displayedOnce: true as const, replacedApiKeyId: id };
+}
+
 export async function revokeApiKey(actor: DomainActor, id: number) {
   const db = await requireDb();
   const key = await db.select({ id: apiKeys.id, organizationId: apiKeys.organizationId, revokedAt: apiKeys.revokedAt }).from(apiKeys).where(eq(apiKeys.id, id)).limit(1);

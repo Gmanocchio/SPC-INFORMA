@@ -83,3 +83,10 @@
 - [x] Disponibilizar os sete campos no seletor de variáveis dos templates de E-mail, SMS, WhatsApp e RCS
 - [x] Renderizar cada disparo com os dados persistidos da respectiva linha e adicionar testes Vitest de regressão multicanal
 - [x] Adicionar rolagem interna responsiva e acessível ao seletor de variáveis dos templates em desktop e celular
+- [x] Auditar quais cadastros administrativos já permitem edição e mapear lacunas por perfil
+- [x] Permitir que administradores autorizados editem usuários já cadastrados com validação e auditoria
+- [x] Permitir que administradores autorizados editem empresas, CDLs, distribuidoras e credores já cadastrados
+- [x] Permitir que administradores autorizados editem campanhas já salvas sem comprometer campanhas em processamento ou concluídas
+- [x] Permitir que o Administrador SPC Brasil edite templates já cadastrados para todos os canais
+- [x] Padronizar ações e formulários de edição nos demais cadastros administrativos aplicáveis
+- [x] Adicionar testes Vitest de permissão, validação, auditoria e regressão dos fluxos de edição

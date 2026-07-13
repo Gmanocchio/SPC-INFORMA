@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Braces, FileText, Mail, MessageSquareText, Plus, RadioTower } from "lucide-react";
+import { Braces, FileText, Mail, MessageSquareText, Pencil, Plus, RadioTower } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export default function Templates() {
   const utils = trpc.useUtils();
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
   const [variablePickerOpen, setVariablePickerOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -59,7 +60,9 @@ export default function Templates() {
   const update = trpc.commercial.templates.update.useMutation({
     onSuccess: async () => {
       await utils.commercial.templates.list.invalidate();
-      toast.success("Situação do template atualizada.");
+      setOpen(false);
+      setEditingTemplateId(null);
+      toast.success("Template atualizado e nova versão registrada na auditoria.");
     },
     onError: error => toast.error(error.message),
   });
@@ -71,7 +74,25 @@ export default function Templates() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    create.mutate({ ...form, subject: form.channel === "EMAIL" ? form.subject : null });
+    const payload = { ...form, subject: form.channel === "EMAIL" ? form.subject : null };
+    if (editingTemplateId) update.mutate({ id: editingTemplateId, ...payload });
+    else create.mutate(payload);
+  }
+
+  function resetForm() {
+    setForm({ name: "", channel: "SMS", subject: "", content: "", status: "DRAFT" });
+  }
+
+  function startEditingTemplate(template: NonNullable<typeof templates.data>[number]) {
+    setEditingTemplateId(template.id);
+    setForm({
+      name: template.name,
+      channel: template.channel,
+      subject: template.subject ?? "",
+      content: template.content,
+      status: template.status === "ARCHIVED" ? "DRAFT" : template.status,
+    });
+    setOpen(true);
   }
 
   function insertVariable(key: TemplateVariableKey) {
@@ -102,14 +123,14 @@ export default function Templates() {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={next => { setOpen(next); if (!next) setEditingTemplateId(null); }}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-[#0066cc] px-5 text-white hover:bg-[#004a99]"><Plus className="size-4" /> Novo template</Button>
+              <Button onClick={() => { setEditingTemplateId(null); resetForm(); }} className="h-11 bg-[#0066cc] px-5 text-white hover:bg-[#004a99]"><Plus className="size-4" /> Novo template</Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Novo template homologado</DialogTitle>
-                <DialogDescription>Selecione variáveis compatíveis com as colunas da planilha e acompanhe a pré-visualização.</DialogDescription>
+                <DialogTitle>{editingTemplateId ? "Editar template homologado" : "Novo template homologado"}</DialogTitle>
+                <DialogDescription>{editingTemplateId ? "A alteração preserva o histórico e cria uma nova versão do template." : "Selecione variáveis compatíveis com as colunas da planilha e acompanhe a pré-visualização."}</DialogDescription>
               </DialogHeader>
 
               <form className="space-y-4" onSubmit={submit}>
@@ -214,8 +235,8 @@ export default function Templates() {
 
                 <div className="flex justify-end gap-3 border-t pt-4">
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                  <Button disabled={create.isPending || unsupportedVariables.length > 0} className="bg-[#0066cc] text-white">
-                    {create.isPending ? "Validando…" : "Salvar template"}
+                  <Button disabled={create.isPending || update.isPending || unsupportedVariables.length > 0} className="bg-[#0066cc] text-white">
+                    {create.isPending || update.isPending ? "Validando…" : editingTemplateId ? "Salvar nova versão" : "Salvar template"}
                   </Button>
                 </div>
               </form>
@@ -229,7 +250,7 @@ export default function Templates() {
         {templates.isLoading ? <Skeleton className="h-48 w-full" /> : templates.isError ? <QueryErrorState message={templates.error.message} onRetry={() => void templates.refetch()} /> : templates.data?.length ? (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader><TableRow><TableHead>Template</TableHead><TableHead>Canal</TableHead><TableHead>Variáveis</TableHead><TableHead>Versão</TableHead><TableHead className="text-right">Situação</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Template</TableHead><TableHead>Canal</TableHead><TableHead>Variáveis</TableHead><TableHead>Versão</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
               <TableBody>{templates.data.map(template => {
                 const Icon = channelIcon[template.channel];
                 return (
@@ -238,12 +259,13 @@ export default function Templates() {
                     <TableCell><span className="inline-flex items-center gap-2"><Icon className="size-4 text-[#0066cc]" />{channelLabel[template.channel]}</span></TableCell>
                     <TableCell><div className="flex max-w-sm flex-wrap gap-1">{template.variables.length ? template.variables.map(variable => <Badge key={variable} variant="secondary"><Braces className="mr-1 size-3" />{variable}</Badge>) : <span className="text-sm text-slate-400">Sem variáveis</span>}</div></TableCell>
                     <TableCell>v{template.version}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       <Select value={template.status} onValueChange={status => update.mutate({ id: template.id, name: template.name, channel: template.channel, subject: template.subject, content: template.content, status: status as "DRAFT" | "ACTIVE" | "ARCHIVED" })}>
-                        <SelectTrigger className="ml-auto w-32"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="DRAFT">Rascunho</SelectItem><SelectItem value="ACTIVE">Ativo</SelectItem><SelectItem value="ARCHIVED">Arquivado</SelectItem></SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell className="text-right"><Button type="button" size="icon" variant="outline" className="bg-white" aria-label={`Editar ${template.name}`} onClick={() => startEditingTemplate(template)}><Pencil className="size-4" /></Button></TableCell>
                   </TableRow>
                 );
               })}</TableBody>

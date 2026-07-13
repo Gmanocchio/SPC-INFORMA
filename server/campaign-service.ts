@@ -348,6 +348,43 @@ export async function campaignDetails(actor: DomainActor, id: string) {
   return { campaign, errors };
 }
 
+const EDITABLE_CAMPAIGN_STATUSES = new Set(["DRAFT", "UPLOADING", "VALIDATING", "READY", "FAILED"]);
+
+export function assertCampaignEditable(status: string) {
+  if (!EDITABLE_CAMPAIGN_STATUSES.has(status)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "A campanha não pode ser editada após a confirmação ou o início do processamento.",
+    });
+  }
+}
+
+export async function updateCampaign(actor: DomainActor, id: string, input: { name?: string; scheduledFor?: Date | null }) {
+  if (actor.role === "REQUESTER") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem editar campanhas." });
+  const db = await requireDb();
+  const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, id), campaignScope(actor))).limit(1);
+  if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Campanha não encontrada no seu escopo." });
+  assertCampaignEditable(campaign.status);
+  if (input.scheduledFor && input.scheduledFor.getTime() <= Date.now()) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O agendamento deve ser definido para uma data futura." });
+  }
+  const changes = {
+    name: input.name?.trim(),
+    scheduledFor: input.scheduledFor,
+  };
+  const [header] = await db.update(campaigns).set(changes).where(and(eq(campaigns.id, id), eq(campaigns.status, campaign.status)));
+  if (Number(header.affectedRows) !== 1) throw new TRPCError({ code: "CONFLICT", message: "A campanha foi alterada por outra operação." });
+  await writeAudit({
+    organizationId: campaign.organizationId,
+    actorUserId: actor.id,
+    action: "CAMPAIGN_UPDATED",
+    resourceType: "campaign",
+    resourceId: campaign.id,
+    metadata: { changedFields: Object.keys(input), previousStatus: campaign.status },
+  });
+  return { success: true as const };
+}
+
 export async function confirmCampaign(actor: DomainActor, id: string, confirmed: boolean) {
   if (!confirmed) throw new TRPCError({ code: "BAD_REQUEST", message: "A confirmação explícita é obrigatória." });
   const db = await requireDb();

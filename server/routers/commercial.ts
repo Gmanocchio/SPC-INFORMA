@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminProcedure, protectedProcedure, router, spcAdminProcedure } from "../_core/trpc";
-import { createApiKey, listApiKeys, revokeApiKey } from "../api-key-service";
+import { createApiKey, listApiKeys, revokeApiKey, rotateApiKey } from "../api-key-service";
 import { listPricing, setBasePrice, setCreditorPrice } from "../pricing-service";
 import { createTemplate, listAvailableTemplates, listTemplates, updateTemplate } from "../template-service";
 
@@ -27,6 +27,7 @@ export const commercialRouter = router({
   apiKeys: router({
     list: adminProcedure.input(z.object({ organizationId: z.number().int().positive().optional() }).optional()).query(({ ctx, input }) => listApiKeys(actor(ctx), input?.organizationId)),
     create: adminProcedure.input(z.object({ organizationId: z.number().int().positive().optional(), name: z.string().trim().min(3).max(160), scopes: z.array(z.enum(["campaigns:read", "campaigns:write", "reports:read"])).min(1).max(3), expiresAt: z.coerce.date().nullable().optional() })).mutation(({ ctx, input }) => createApiKey(actor(ctx), input)),
+    rotate: adminProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().trim().min(3).max(160), scopes: z.array(z.enum(["campaigns:read", "campaigns:write", "reports:read"])).min(1).max(3), expiresAt: z.coerce.date().nullable().optional() })).mutation(({ ctx, input }) => rotateApiKey(actor(ctx), input.id, input)),
     revoke: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => revokeApiKey(actor(ctx), input.id)),
   }),
 });

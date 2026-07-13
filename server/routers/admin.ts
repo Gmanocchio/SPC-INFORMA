@@ -36,6 +36,6 @@ export const adminRouter = router({
   users: router({
     list: adminProcedure.input(z.object({ organizationId: z.number().int().positive().optional(), search: z.string().trim().max(120).optional() })).query(({ ctx, input }) => listUsers(actor(ctx), input)),
     create: adminProcedure.input(z.object({ organizationId: z.number().int().positive(), name: z.string().trim().min(2).max(160), cpf: z.string().refine(isValidCpf, "CPF inválido."), email: z.string().trim().email().max(320), phone: nullableText(20), initialPassword: z.string().min(12).max(128), role: userRole })).mutation(({ ctx, input }) => createUser(actor(ctx), input)),
-    update: adminProcedure.input(z.object({ id: z.number().int().positive(), data: z.object({ name: z.string().trim().min(2).max(160).optional(), phone: nullableText(20), role: userRole.optional(), status: z.enum(["INVITED", "ACTIVE", "INACTIVE", "LOCKED"]).optional() }) })).mutation(({ ctx, input }) => updateUser(actor(ctx), input.id, input.data)),
+    update: adminProcedure.input(z.object({ id: z.number().int().positive(), data: z.object({ name: z.string().trim().min(2).max(160).optional(), email: z.string().trim().email().max(320).optional(), phone: nullableText(20), role: userRole.optional(), status: z.enum(["INVITED", "ACTIVE", "INACTIVE", "LOCKED"]).optional() }) })).mutation(({ ctx, input }) => updateUser(actor(ctx), input.id, input.data)),
   }),
 });

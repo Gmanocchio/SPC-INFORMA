@@ -5,6 +5,7 @@ import {
   Download,
   FileSpreadsheet,
   Megaphone,
+  Pencil,
   Plus,
   Send,
   TriangleAlert,
@@ -84,6 +85,8 @@ export default function Campaigns() {
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [processingStage, setProcessingStage] = useState(0);
+  const [editingCampaign, setEditingCampaign] = useState<null | { id: string; status: string }>(null);
+  const [campaignEditForm, setCampaignEditForm] = useState({ name: "", scheduledFor: "" });
   const [form, setForm] = useState({
     name: "",
     channel: "SMS" as Channel,
@@ -139,6 +142,35 @@ export default function Campaigns() {
     },
     onError: error => toast.error(error.message),
   });
+
+  const updateCampaign = trpc.campaigns.update.useMutation({
+    onSuccess: async () => {
+      await utils.campaigns.list.invalidate();
+      setEditingCampaign(null);
+      toast.success("Campanha atualizada e alteração registrada na auditoria.");
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  function startEditingCampaign(campaign: NonNullable<typeof campaigns.data>[number]) {
+    setEditingCampaign({ id: campaign.id, status: campaign.status });
+    setCampaignEditForm({
+      name: campaign.name,
+      scheduledFor: campaign.scheduledFor ? toLocalDateTimeInput(campaign.scheduledFor) : "",
+    });
+  }
+
+  function submitCampaignEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editingCampaign) return;
+    updateCampaign.mutate({
+      id: editingCampaign.id,
+      data: {
+        name: campaignEditForm.name,
+        scheduledFor: campaignEditForm.scheduledFor ? new Date(campaignEditForm.scheduledFor) : null,
+      },
+    });
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -372,6 +404,21 @@ export default function Campaigns() {
         </div>
       </section>
 
+      <Dialog open={Boolean(editingCampaign)} onOpenChange={next => { if (!next) setEditingCampaign(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar campanha</DialogTitle>
+            <DialogDescription>Somente nome e agendamento podem ser alterados antes do início do processamento. Canal, template, credor e destinatários permanecem imutáveis.</DialogDescription>
+          </DialogHeader>
+          {editingCampaign && <form className="space-y-4 pt-2" onSubmit={submitCampaignEdit}>
+            <Field label="Nome"><Input required minLength={3} value={campaignEditForm.name} onChange={event => setCampaignEditForm({ ...campaignEditForm, name: event.target.value })} /></Field>
+            <Field label="Agendar para (opcional)"><Input type="datetime-local" value={campaignEditForm.scheduledFor} onChange={event => setCampaignEditForm({ ...campaignEditForm, scheduledFor: event.target.value })} /></Field>
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-sm text-slate-600">Situação atual: <strong className="text-slate-900">{statusLabels[editingCampaign.status] ?? editingCampaign.status}</strong></div>
+            <div className="flex justify-end gap-3 border-t pt-4"><Button type="button" variant="outline" onClick={() => setEditingCampaign(null)}>Cancelar</Button><Button disabled={updateCampaign.isPending} className="bg-[#0066cc] text-white">{updateCampaign.isPending ? "Salvando…" : "Salvar alterações"}</Button></div>
+          </form>}
+        </DialogContent>
+      </Dialog>
+
       {summary && (
         <section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -447,7 +494,7 @@ export default function Campaigns() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Campanha</TableHead><TableHead>Canal</TableHead><TableHead>Destinatários</TableHead>
-                  <TableHead>Entrega</TableHead><TableHead>Valor</TableHead><TableHead>Agenda</TableHead><TableHead>Situação</TableHead>
+                  <TableHead>Entrega</TableHead><TableHead>Valor</TableHead><TableHead>Agenda</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -473,6 +520,11 @@ export default function Campaigns() {
                       <Badge className={campaign.status === "COMPLETED" ? "bg-emerald-50 text-emerald-700" : campaign.status === "FAILED" ? "bg-red-50 text-red-700" : "bg-blue-50 text-[#004a99]"}>
                         {statusLabels[campaign.status] ?? campaign.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {identity?.user.role !== "REQUESTER" && ["DRAFT", "READY", "SCHEDULED"].includes(campaign.status) ? (
+                        <Button type="button" size="icon" variant="outline" className="bg-white" aria-label={`Editar ${campaign.name}`} onClick={() => startEditingCampaign(campaign)}><Pencil className="size-4" /></Button>
+                      ) : <span className="text-xs text-slate-400">Bloqueada após início</span>}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -502,4 +554,10 @@ function Summary({ label, value, warning }: { label: string; value: string | num
       <div className="mt-1 text-lg font-extrabold text-slate-950">{value}</div>
     </div>
   );
+}
+
+function toLocalDateTimeInput(value: Date | string) {
+  const date = new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }

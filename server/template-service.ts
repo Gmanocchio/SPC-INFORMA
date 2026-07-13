@@ -86,13 +86,28 @@ export async function createTemplate(actor: DomainActor, input: { name: string; 
 export async function updateTemplate(actor: DomainActor, id: number, input: { name: string; channel: Channel; subject?: string | null; content: string; status: "DRAFT" | "ACTIVE" | "ARCHIVED" }) {
   validateTemplateInput(input.channel, input.subject, input.content);
   const db = await requireDb();
-  const existing = await db.select({ id: messageTemplates.id, version: messageTemplates.version }).from(messageTemplates).where(eq(messageTemplates.id, id)).limit(1);
+  const existing = await db.select().from(messageTemplates).where(eq(messageTemplates.id, id)).limit(1);
   if (!existing[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Template não encontrado." });
+  if (existing[0].status === "ARCHIVED") {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Templates arquivados não podem ser editados ou reativados." });
+  }
+  const normalizedSubject = input.channel === "EMAIL" ? input.subject?.trim() ?? null : null;
+  if (existing[0].status === "ACTIVE") {
+    const contentChanged = existing[0].channel !== input.channel
+      || existing[0].subject !== normalizedSubject
+      || existing[0].content !== input.content.trim();
+    if (contentChanged || input.status === "DRAFT") {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "O conteúdo de um template ativo é imutável. Arquive-o e crie um novo rascunho para alterar a mensagem.",
+      });
+    }
+  }
   const variables = extractTemplateVariables(input.subject, input.content);
   await db.update(messageTemplates).set({
     name: input.name.trim(),
     channel: input.channel,
-    subject: input.channel === "EMAIL" ? input.subject?.trim() ?? null : null,
+    subject: normalizedSubject,
     content: input.content.trim(),
     variables,
     status: input.status,
