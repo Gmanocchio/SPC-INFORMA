@@ -448,6 +448,26 @@ export default function Campaigns() {
               <span className="text-center text-xs text-slate-500">
                 A confirmação debita saldo ou registra consumo.
               </span>
+              {summary.invalidRows > 0 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSummary(null);
+                      setFile(null);
+                      setProcessingStage(0);
+                      setOpen(true);
+                    }}
+                    className="text-amber-600 hover:bg-amber-50"
+                  >
+                    Excluir arquivo e reenviar
+                  </Button>
+                  <span className="text-center text-xs text-slate-500">
+                    Corrija os dados e envie um novo arquivo.
+                  </span>
+                </>
+              )}
             </div>
           </div>
           {summary.errors.length > 0 && (
