@@ -138,3 +138,6 @@
 - [x] Validar tipagem, suíte Vitest, build de produção e responsividade desktop e celular da nova tela de Precificação
 - [x] Comprovar por regressão explícita que preços-base e preços por credor registram auditoria ao criar nova vigência
 - [x] Executar e registrar validação visual da rota de Precificação em viewport móvel e complementar a matriz protegida com contratos responsivos automatizados
+- [x] Exibir Base SPC Brasil como primeira linha (somente leitura) na matriz de Precificação para CDL_ADMIN e DISTRIBUTOR_ADMIN, seguida pelos credores do escopo da organização
+- [x] Adicionar regressão para validar que CDL_ADMIN e DISTRIBUTOR_ADMIN veem Base SPC Brasil + credores do escopo
+- [x] Validar tipagem, testes, build e interface da matriz com Base SPC Brasil visível (111 testes aprovados, build sucesso)

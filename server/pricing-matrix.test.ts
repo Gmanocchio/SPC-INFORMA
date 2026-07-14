@@ -36,17 +36,28 @@ describe("matriz de precificação por credor e canal", () => {
     expect(PRICING_CHANNELS).toEqual(["EMAIL", "SMS", "WHATSAPP", "RCS"]);
   });
 
-  it("limita CDL_ADMIN ou DISTRIBUTOR_ADMIN aos credores ativos da própria organização", () => {
+  it("exibe Base SPC Brasil como primeira linha para CDL_ADMIN e DISTRIBUTOR_ADMIN, seguida pelos credores do escopo", () => {
     const cdlRows = buildPricingMatrixRows({ organizations, actorOrganizationId: 10, isSpcAdmin: false });
     const distributorRows = buildPricingMatrixRows({ organizations, actorOrganizationId: 20, isSpcAdmin: false });
-    expect(cdlRows.map(row => row.name)).toEqual(["Credor Alfa", "Credor Beta"]);
-    expect(distributorRows.map(row => row.name)).toEqual(["Credor Gama"]);
-    expect(cdlRows.every(row => row.organizationId === 10)).toBe(true);
-    expect(distributorRows.every(row => row.organizationId === 20)).toBe(true);
+    expect(cdlRows.map(row => row.name)).toEqual(["Base SPC Brasil", "Credor Alfa", "Credor Beta"]);
+    expect(distributorRows.map(row => row.name)).toEqual(["Base SPC Brasil", "Credor Gama"]);
+    expect(cdlRows[0]?.priceType).toBe("SPC_BASE");
+    expect(distributorRows[0]?.priceType).toBe("SPC_BASE");
+    expect(cdlRows.slice(1).every(row => row.organizationId === 10)).toBe(true);
+    expect(distributorRows.slice(1).every(row => row.organizationId === 20)).toBe(true);
+  });
+
+  it("desabilita visualmente a Base SPC Brasil para CDL_ADMIN e DISTRIBUTOR_ADMIN na interface", () => {
+    const source = readFileSync(resolve(process.cwd(), "client/src/pages/Pricing.tsx"), "utf8");
+    expect(source).toContain('const isReadOnly = row.priceType === "SPC_BASE" && !isSpc;');
+    expect(source).toContain('disabled={isReadOnly}');
+    expect(source).toContain('"border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed"');
+    expect(source).toContain('toast.info("Base SPC Brasil é somente leitura para sua organização.");');
   });
 
   it("considera verde apenas a regra ativa e mantém a última regra inativa como referência editável", () => {
-    const [row] = buildPricingMatrixRows({ organizations, actorOrganizationId: 10, isSpcAdmin: false });
+    const rows = buildPricingMatrixRows({ organizations, actorOrganizationId: 10, isSpcAdmin: false });
+    const row = rows[1]; // Pular Base SPC Brasil e usar primeiro credor
     const inactive = rule({ id: 1, organizationId: 10, creditorOrganizationId: 101, channel: "SMS", active: false, validFrom: new Date("2026-07-12T12:00:00.000Z") });
     const active = rule({ id: 2, organizationId: 10, creditorOrganizationId: 101, channel: "SMS", active: true, validFrom: new Date("2026-07-13T12:00:00.000Z") });
     expect(findCellRules([inactive, active], row, "SMS")).toEqual({ activeRule: active, latestRule: active });

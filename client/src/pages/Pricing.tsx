@@ -109,6 +109,11 @@ export default function Pricing() {
   });
 
   function openCell(row: PricingMatrixRow, channel: PricingChannel) {
+    // Impedir edição da Base SPC Brasil para CDL_ADMIN e DISTRIBUTOR_ADMIN
+    if (row.priceType === "SPC_BASE" && !isSpc) {
+      toast.info("Base SPC Brasil é somente leitura para sua organização.");
+      return;
+    }
     const cellRules = findCellRules(pricingRules, row, channel);
     const referenceRule = cellRules.activeRule ?? cellRules.latestRule;
     setSelectedCell({ row, channel, ...cellRules });
@@ -205,12 +210,14 @@ export default function Pricing() {
                   {PRICING_CHANNELS.map(channel => {
                     const { activeRule, latestRule } = findCellRules(pricingRules, row, channel);
                     const referenceRule = activeRule ?? latestRule;
+                    const isReadOnly = row.priceType === "SPC_BASE" && !isSpc;
                     return <TableCell key={`${row.key}-${channel}`} className={`p-2.5 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
                       <button
                         type="button"
                         onClick={() => openCell(row, channel)}
+                        disabled={isReadOnly}
                         aria-label={`${activeRule ? "Editar" : "Cadastrar"} preço de ${PRICING_CHANNEL_LABELS[channel]} para ${row.name}`}
-                        className={`group flex min-h-20 w-full flex-col items-center justify-center rounded-xl border px-3 py-3 text-center shadow-sm transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066cc] focus-visible:ring-offset-2 active:scale-[0.97] ${activeRule ? "border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700" : "border-rose-700 bg-rose-600 text-white hover:bg-rose-700"}`}
+                        className={`group flex min-h-20 w-full flex-col items-center justify-center rounded-xl border px-3 py-3 text-center shadow-sm transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066cc] focus-visible:ring-offset-2 active:scale-[0.97] ${isReadOnly ? "border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed" : activeRule ? "border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700" : "border-rose-700 bg-rose-600 text-white hover:bg-rose-700"}`}
                       >
                         <span className="text-base font-extrabold">{referenceRule ? reais(referenceRule.unitPriceMicros) : "Sem preço"}</span>
                         <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-white/90">

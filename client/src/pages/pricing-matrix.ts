@@ -73,12 +73,14 @@ export function buildPricingMatrixRows({ organizations, actorOrganizationId, isS
     priceType: "CREDITOR_PRICE",
   }));
 
-  if (isSpcAdmin) {
+  // Exibir Base SPC Brasil como primeira linha para todos os perfis administrativos
+  const spcOrganization = organizations.find(org => org.type === "SPC_BRASIL");
+  if (spcOrganization) {
     rows.unshift({
       key: "spc-base",
       name: "Base SPC Brasil",
       ownerName: "Referência geral",
-      organizationId: actorOrganizationId,
+      organizationId: spcOrganization.id,
       creditorOrganizationId: null,
       priceType: "SPC_BASE",
     });
