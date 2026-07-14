@@ -6,6 +6,7 @@ export type CampaignOwnerOption = {
 export type CampaignCreditorOption = {
   id: number;
   parentOrganizationId: number | null;
+  linkedToOrganizationId: number | null;
 };
 
 export function campaignFormAfterOwnerChange<
@@ -25,11 +26,17 @@ export function creditorsForCampaignOwner<T extends CampaignCreditorOption>(
   isSpcAdmin: boolean,
 ) {
   const selectedOwner = owners.find(owner => String(owner.id) === ownerId);
-  if (!selectedOwner) return [];
-
-  if (isSpcAdmin && selectedOwner.type === "SPC_BRASIL") {
-    return creditors;
+  if (!selectedOwner) {
+    const ownCreditor = creditors.find(creditor => String(creditor.id) === ownerId);
+    return ownCreditor ? [ownCreditor] : [];
   }
 
-  return creditors.filter(creditor => creditor.parentOrganizationId === selectedOwner.id);
+  if (isSpcAdmin && selectedOwner.type === "SPC_BRASIL") {
+    return creditors.filter(creditor => {
+      const ownerOrganizationId = creditor.linkedToOrganizationId ?? creditor.parentOrganizationId;
+      return ownerOrganizationId === null || ownerOrganizationId === selectedOwner.id;
+    });
+  }
+
+  return creditors.filter(creditor => (creditor.linkedToOrganizationId ?? creditor.parentOrganizationId) === selectedOwner.id);
 }

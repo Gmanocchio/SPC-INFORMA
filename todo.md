@@ -156,3 +156,10 @@
 - [x] Ocultar “Consolidado por organização” no dashboard quando o usuário estiver vinculado a uma organização do tipo CREDITOR
 - [x] Preservar os indicadores próprios do credor e manter o consolidado disponível somente para SPC_ADMIN da organização SPC Brasil
 - [x] Adicionar regressões de interface por tipo de organização e validar testes, TypeScript e build (126 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
+- [x] Reproduzir e identificar a causa do erro de preço para usuário de credor diretamente vinculado ao SPC Brasil (o fluxo ignorava linkedToOrganizationId, consultava parentOrganizationId e precificava pelo próprio credor)
+- [x] Usar exclusivamente o preço-base vigente do SPC Brasil quando o usuário pertencer a um credor diretamente vinculado ao SPC Brasil
+- [x] Para usuários vinculados a Distribuidora, resolver o preço específico vigente do credor dentro do escopo da Distribuidora
+- [x] Para usuários vinculados a CDL, resolver o preço específico vigente do credor dentro do escopo da CDL
+- [x] Garantir que seleção do credor, validação financeira, criação e edição de campanha usem a mesma regra centralizada de precificação (a preparação resolve o preço por vínculo e a campanha preserva esse valor durante edição e confirmação)
+- [x] Adicionar regressões de backend para credor direto do SPC Brasil, Distribuidora e CDL, incluindo ausência e vigência de preços (30 testes focados aprovados)
+- [x] Validar a correção com TypeScript, suíte Vitest completa e build de produção antes de salvar nova versão (TypeScript sem erros, 138 testes aprovados, 1 ignorado e build concluído)

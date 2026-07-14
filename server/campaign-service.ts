@@ -199,12 +199,13 @@ async function resolveCampaignOrganization(actor: DomainActor, requested?: numbe
 
 async function assertCreditorAndTemplate(organizationId: number, creditorOrganizationId: number, templateId: number, channel: Channel, isSpc: boolean) {
   const db = await requireDb();
-  const [creditor] = await db.select({ id: organizations.id, parentOrganizationId: organizations.parentOrganizationId, type: organizations.type, status: organizations.status }).from(organizations).where(eq(organizations.id, creditorOrganizationId)).limit(1);
+  const [creditor] = await db.select({ id: organizations.id, parentOrganizationId: organizations.parentOrganizationId, linkedToOrganizationId: organizations.linkedToOrganizationId, type: organizations.type, status: organizations.status }).from(organizations).where(eq(organizations.id, creditorOrganizationId)).limit(1);
   if (!creditor || creditor.type !== "CREDITOR" || creditor.status !== "ACTIVE") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Credor inválido ou fora do escopo da organização." });
   }
-  // Se não é SPC Admin, valida se o credor pertence à organização do usuário
-  if (!isSpc && creditor.id !== organizationId && creditor.parentOrganizationId !== organizationId) {
+  const creditorOwnerId = creditor.linkedToOrganizationId ?? creditor.parentOrganizationId;
+  // Usuário credor só opera o próprio cadastro; CDL/Distribuidora só opera credores vinculados ao seu escopo.
+  if (!isSpc && creditor.id !== organizationId && creditorOwnerId !== organizationId) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Credor inválido ou fora do escopo da organização." });
   }
   const [template] = await db.select().from(messageTemplates).where(and(eq(messageTemplates.id, templateId), eq(messageTemplates.status, "ACTIVE"), eq(messageTemplates.channel, channel))).limit(1);
@@ -232,13 +233,14 @@ export async function listCampaignOptions(actor: DomainActor) {
     ? eq(organizations.status, "ACTIVE")
     : and(
         eq(organizations.status, "ACTIVE"),
-        or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId)),
+        or(eq(organizations.id, actor.organizationId), eq(organizations.linkedToOrganizationId, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId)),
       );
   const rows = await db.select({
     id: organizations.id,
     tradeName: organizations.tradeName,
     type: organizations.type,
     parentOrganizationId: organizations.parentOrganizationId,
+    linkedToOrganizationId: organizations.linkedToOrganizationId,
     billingModel: organizations.billingModel,
     balanceCents: organizations.balanceCents,
   }).from(organizations).where(scope).orderBy(organizations.tradeName).limit(1000);
@@ -266,7 +268,7 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
   const organization = await resolveCampaignOrganization(actor, input.organizationId);
   const isSpc = organization.type === "SPC_BRASIL";
   const template = await assertCreditorAndTemplate(organization.id, input.creditorOrganizationId, input.templateId, input.channel, isSpc);
-  const unitPriceMicros = await resolveCampaignPrice(organization.id, input.creditorOrganizationId, input.channel, isSpc);
+  const unitPriceMicros = await resolveCampaignPrice(organization.id, input.creditorOrganizationId, input.channel);
   const campaignId = randomUUID();
   const idempotencyKey = hmacToken(`${organization.id}:${input.idempotencyKey}`, ENV.cookieSecret);
   const rows = parseRows(file, input.mimeType, input.filename);

@@ -19,9 +19,9 @@ const owners = [
 ];
 
 const creditors = [
-  { id: 10, parentOrganizationId: null, tradeName: "Credor global" },
-  { id: 11, parentOrganizationId: 1, tradeName: "Credor SPC" },
-  { id: 12, parentOrganizationId: 2, tradeName: "Credor da CDL" },
+  { id: 10, parentOrganizationId: null, linkedToOrganizationId: null, tradeName: "Credor direto do SPC" },
+  { id: 11, parentOrganizationId: null, linkedToOrganizationId: 1, tradeName: "Credor vinculado ao SPC" },
+  { id: 12, parentOrganizationId: null, linkedToOrganizationId: 2, tradeName: "Credor da CDL" },
 ];
 
 describe("credores disponíveis na preparação de campanhas", () => {
@@ -29,8 +29,8 @@ describe("credores disponíveis na preparação de campanhas", () => {
     vi.clearAllMocks();
   });
 
-  it("lê todos os credores ativos entregues pela API quando o SPC Brasil é responsável", () => {
-    expect(creditorsForCampaignOwner(owners, creditors, "1", true)).toEqual(creditors);
+  it("oferece somente credores diretamente vinculados ao SPC Brasil quando ele é responsável", () => {
+    expect(creditorsForCampaignOwner(owners, creditors, "1", true)).toEqual([creditors[0], creditors[1]]);
   });
 
   it("mantém o escopo do proprietário selecionado fora do contexto SPC Brasil", () => {
@@ -41,6 +41,10 @@ describe("credores disponíveis na preparação de campanhas", () => {
   it("não oferece credores antes da seleção de uma organização responsável válida", () => {
     expect(creditorsForCampaignOwner(owners, creditors, "", true)).toEqual([]);
     expect(creditorsForCampaignOwner(owners, creditors, "999", true)).toEqual([]);
+  });
+
+  it("oferece o próprio credor quando o usuário está vinculado diretamente a ele", () => {
+    expect(creditorsForCampaignOwner([], creditors, "11", false)).toEqual([creditors[1]]);
   });
 
   it("limpa o credor selecionado ao trocar a organização responsável", () => {
@@ -58,11 +62,11 @@ describe("credores disponíveis na preparação de campanhas", () => {
     });
   });
 
-  it("lê no backend os credores ativos disponíveis ao SPC_ADMIN, inclusive sem organização pai", async () => {
+  it("lê no backend os credores ativos disponíveis ao SPC_ADMIN, inclusive sem vínculo persistido", async () => {
     const rows = [
-      { id: 1, tradeName: "SPC Brasil", type: "SPC_BRASIL", parentOrganizationId: null, billingModel: "PREPAID", balanceCents: 0 },
-      { id: 10, tradeName: "Credor global", type: "CREDITOR", parentOrganizationId: null, billingModel: "PREPAID", balanceCents: 0 },
-      { id: 11, tradeName: "Credor vinculado", type: "CREDITOR", parentOrganizationId: 1, billingModel: "PREPAID", balanceCents: 0 },
+      { id: 1, tradeName: "SPC Brasil", type: "SPC_BRASIL", parentOrganizationId: null, linkedToOrganizationId: null, billingModel: "PREPAID", balanceCents: 0 },
+      { id: 10, tradeName: "Credor direto", type: "CREDITOR", parentOrganizationId: null, linkedToOrganizationId: null, billingModel: "PREPAID", balanceCents: 0 },
+      { id: 11, tradeName: "Credor vinculado", type: "CREDITOR", parentOrganizationId: null, linkedToOrganizationId: 1, billingModel: "PREPAID", balanceCents: 0 },
     ];
     const limit = vi.fn(async () => rows);
     const orderBy = vi.fn(() => ({ limit }));

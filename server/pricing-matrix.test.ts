@@ -83,7 +83,8 @@ describe("matriz de precificação por credor e canal", () => {
   it("preserva no backend o isolamento, valida o credor e audita as duas modalidades de preço", () => {
     const service = readFileSync(resolve(process.cwd(), "server/pricing-service.ts"), "utf8");
     expect(service).toContain('eq(pricingRules.organizationId, actor.organizationId)');
-    expect(service).toContain("creditor[0].parentOrganizationId !== ownerOrganizationId");
+    expect(service).toContain("creditor[0]?.linkedToOrganizationId ?? creditor[0]?.parentOrganizationId");
+    expect(service).toContain("creditorOwnerId !== ownerOrganizationId");
     expect(service).toContain("await assertCreditorScope(actor, input.creditorOrganizationId, ownerOrganizationId)");
     expect(service).toContain('action: "SPC_BASE_PRICE_SET"');
     expect(service).toContain('action: "CREDITOR_PRICE_SET"');
