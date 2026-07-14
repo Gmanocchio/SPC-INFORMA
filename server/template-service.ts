@@ -43,6 +43,7 @@ export function validateTemplateInput(channel: Channel, subject: string | null |
 
 export async function listAvailableTemplates(actor: DomainActor, channel?: Channel) {
   const db = await requireDb();
+  // Return templates from SPC Brasil (organizationId = 1) for all users
   return db
     .select({
       id: messageTemplates.id,
@@ -54,7 +55,13 @@ export async function listAvailableTemplates(actor: DomainActor, channel?: Chann
       version: messageTemplates.version,
     })
     .from(messageTemplates)
-    .where(and(eq(messageTemplates.status, "ACTIVE"), channel ? eq(messageTemplates.channel, channel) : undefined))
+    .where(
+      and(
+        eq(messageTemplates.organizationId, 1), // SPC Brasil
+        eq(messageTemplates.status, "ACTIVE"),
+        channel ? eq(messageTemplates.channel, channel) : undefined
+      )
+    )
     .orderBy(messageTemplates.channel, messageTemplates.name);
 }
 

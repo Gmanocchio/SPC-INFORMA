@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./db", () => ({ getDb: mocks.getDb }));
 vi.mock("./audit", () => ({ writeAudit: mocks.writeAudit }));
 
-import { updateTemplate } from "./template-service";
+import { listAvailableTemplates, updateTemplate } from "./template-service";
 
 function createDbDouble(existing: Record<string, unknown>) {
   const limit = vi.fn(async () => [existing]);
@@ -22,6 +22,78 @@ function createDbDouble(existing: Record<string, unknown>) {
 
   return { db: { select, update, transaction }, set, updateWhere, transaction };
 }
+
+describe("listAvailableTemplates", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("retorna apenas templates do SPC Brasil (organizationId = 1) com status ACTIVE", async () => {
+    const spcBrasilTemplates = [
+      {
+        id: 1,
+        name: "Mensagem WhatsApp",
+        channel: "WHATSAPP",
+        subject: null,
+        content: "Olá {{nome_cliente}}",
+        variables: ["nome_cliente"],
+        version: 1,
+      },
+      {
+        id: 2,
+        name: "Notificação Email",
+        channel: "EMAIL",
+        subject: "Aviso de débito",
+        content: "Você tem um débito de {{valor}}",
+        variables: ["valor"],
+        version: 1,
+      },
+    ];
+
+    const orderBy = vi.fn(async () => spcBrasilTemplates);
+    const where = vi.fn(() => ({ orderBy }));
+    const from = vi.fn(() => ({ where }));
+    const select = vi.fn(() => ({ from }));
+    const db = { select };
+    mocks.getDb.mockResolvedValue(db);
+
+    const result = await listAvailableTemplates({ id: 10, organizationId: 2, role: "ORG_ADMIN" });
+
+    expect(result).toEqual(spcBrasilTemplates);
+    expect(select).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expect.anything(),
+        name: expect.anything(),
+        channel: expect.anything(),
+      })
+    );
+  });
+
+  it("filtra por canal quando fornecido", async () => {
+    const whatsappTemplates = [
+      {
+        id: 1,
+        name: "Mensagem WhatsApp",
+        channel: "WHATSAPP",
+        subject: null,
+        content: "Olá {{nome_cliente}}",
+        variables: ["nome_cliente"],
+        version: 1,
+      },
+    ];
+
+    const orderBy = vi.fn(async () => whatsappTemplates);
+    const where = vi.fn(() => ({ orderBy }));
+    const from = vi.fn(() => ({ where }));
+    const select = vi.fn(() => ({ from }));
+    const db = { select };
+    mocks.getDb.mockResolvedValue(db);
+
+    const result = await listAvailableTemplates({ id: 10, organizationId: 2, role: "ORG_ADMIN" }, "WHATSAPP");
+
+    expect(result).toEqual(whatsappTemplates);
+  });
+});
 
 describe("updateTemplate", () => {
   beforeEach(() => {
