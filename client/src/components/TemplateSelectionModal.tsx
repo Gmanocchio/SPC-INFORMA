@@ -80,21 +80,22 @@ export function TemplateSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-3rem)] lg:max-w-6xl">
+        <DialogHeader className="shrink-0 border-b border-slate-100 px-5 py-5 pr-12 sm:px-7 sm:py-6">
           <DialogTitle>Selecionar Template</DialogTitle>
           <DialogDescription>
             Escolha um template homologado para sua campanha. Visualize o conteúdo antes de selecionar.
           </DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          {isLoading ? (
+          <div className="grid gap-5 lg:grid-cols-2">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="space-y-3 rounded-xl border p-4">
+              <div key={i} className="space-y-3 rounded-2xl border p-5 sm:p-6">
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-52 w-full" />
                 <Skeleton className="h-9 w-full" />
               </div>
             ))}
@@ -102,34 +103,34 @@ export function TemplateSelectionModal({
         ) : isError ? (
           <QueryErrorState message={error?.message ?? "Erro ao carregar templates"} onRetry={onRetry} />
         ) : filteredTemplates?.length ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div data-testid="template-grid" className="grid gap-5 lg:grid-cols-2">
             {filteredTemplates.map(template => {
               const Icon = channelIcon[template.channel];
               const previewContent = renderSafePreview(template.content);
               const previewSubject = template.subject ? renderSafePreview(template.subject) : null;
 
               return (
-                <div key={template.id} className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:shadow-md transition-all">
-                  <div className="flex items-start justify-between gap-2 mb-3">
+                <div data-testid={`template-card-${template.id}`} key={template.id} className="flex min-h-[30rem] flex-col rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-blue-300 hover:shadow-md sm:p-6">
+                  <div className="mb-4 flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900">{template.name}</h3>
+                      <h3 className="text-base font-semibold leading-6 text-slate-900 sm:text-lg">{template.name}</h3>
                       <div className="flex items-center gap-2 mt-1">
                         <Icon className="size-4 text-[#0066cc]" />
-                        <span className="text-xs text-slate-500">{channelLabel[template.channel]}</span>
+                        <span className="text-sm text-slate-500">{channelLabel[template.channel]}</span>
                       </div>
                     </div>
                     <Badge variant="secondary">v{template.version}</Badge>
                   </div>
 
                   {previewSubject && (
-                    <div className="mb-2 rounded bg-slate-50 p-2 text-xs">
+                    <div className="mb-3 rounded-xl bg-slate-50 p-3 text-sm">
                       <span className="font-semibold text-slate-600">Assunto: </span>
                       <span className="text-slate-700">{previewSubject}</span>
                     </div>
                   )}
 
-                  <div className="mb-4 flex-1 rounded bg-slate-50 p-3">
-                    <p className="whitespace-pre-wrap break-words text-xs leading-5 text-slate-700 font-mono">
+                  <div className="mb-5 min-h-60 flex-1 overflow-y-auto rounded-xl bg-slate-50 p-4 sm:max-h-80 sm:p-5">
+                    <p className="whitespace-pre-wrap break-words font-mono text-sm leading-6 text-slate-700">
                       {previewContent}
                     </p>
                   </div>
@@ -158,6 +159,7 @@ export function TemplateSelectionModal({
             </p>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

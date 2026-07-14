@@ -48,6 +48,11 @@ describe("TemplateSelectionModal", () => {
     );
 
     const dialog = await screen.findByRole("dialog");
+    expect(dialog.className).toContain("lg:max-w-6xl");
+    expect(dialog.className).toContain("w-[calc(100vw-1.5rem)]");
+    expect(dialog.className).toContain("sm:max-w-[calc(100vw-3rem)]");
+    expect(within(dialog).getByTestId("template-grid").className).toContain("lg:grid-cols-2");
+    expect(within(dialog).getByTestId("template-card-510001").className).toContain("min-h-[30rem]");
     expect(within(dialog).getByText("SMS Cobrança amigável")).toBeTruthy();
     expect(within(dialog).queryByText("E-mail Cobrança amigável")).toBeNull();
     expect(within(dialog).queryByText("Nenhum template disponível")).toBeNull();

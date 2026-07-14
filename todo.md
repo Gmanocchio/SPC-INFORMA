@@ -150,3 +150,6 @@
 - [x] Corrigir o contrato entre listAvailableTemplates, tipagem do cliente e TemplateSelectionModal sem coerção insegura
 - [x] Adicionar regressão do componente real comprovando a renderização e seleção de template ativo por canal
 - [x] Executar suíte Vitest, verificação TypeScript e build antes de criar nova versão (124 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
+- [x] Ampliar a largura do modal de seleção de templates em desktop para eliminar o aspecto espremido
+- [x] Aumentar a área útil dos cards e da pré-visualização, preservando rolagem e responsividade móvel
+- [x] Validar o modal ampliado por contratos responsivos de desktop e celular, executar testes, TypeScript e build (124 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
