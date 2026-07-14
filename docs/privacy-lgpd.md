@@ -1,7 +1,7 @@
 # Privacidade, LGPD e retenção de dados
 
 **Autor:** Manus AI  
-**Escopo:** Notificadora SPC Brasil  
+**Escopo:** SPC Informa  
 **Última revisão técnica:** 13 de julho de 2026
 
 > Este documento descreve controles técnicos e decisões operacionais recomendadas. Ele **não constitui parecer jurídico** nem, isoladamente, declaração de conformidade. A definição das bases legais, dos papéis de controlador e operador, dos prazos regulatórios e do atendimento aos titulares deve ser validada pelo encarregado e pela assessoria jurídica do SPC Brasil.

@@ -60,7 +60,7 @@ export default function Access() {
         <div className="w-full max-w-md">
           <Link href="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-[#004A99]"><ArrowLeft className="h-4 w-4" /> Voltar ao início</Link>
           <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-[0_20px_70px_rgba(15,45,80,.09)] sm:p-10">
-            <div className="mb-8 flex items-center gap-4 lg:hidden"><span className="flex h-12 w-28 items-center rounded-xl border border-slate-100 bg-white px-2 shadow-sm"><img src={LOGO_URL} alt="SPC Brasil" /></span><span className="text-sm font-bold text-[#004A99]">Notificadora</span></div>
+            <div className="mb-8 flex items-center gap-4 lg:hidden"><span className="flex h-12 w-28 items-center rounded-xl border border-slate-100 bg-white px-2 shadow-sm"><img src={LOGO_URL} alt="SPC Brasil" /></span><span className="text-sm font-bold text-[#004A99]">SPC Informa</span></div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[#0066CC]">{step === "credentials" ? <LockKeyhole className="h-6 w-6" /> : <KeyRound className="h-6 w-6" />}</div>
             <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-[#003B7A]">{step === "credentials" ? "Acesse sua conta" : "Confirme seu acesso"}</h2>
             <p className="mt-3 leading-7 text-slate-600">{step === "credentials" ? "Informe suas credenciais corporativas para continuar." : `Enviamos um código de 6 dígitos para ${challenge?.hint ?? "seu e-mail"}.`}</p>

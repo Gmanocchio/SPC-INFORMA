@@ -43,14 +43,14 @@ export default function Home() {
             <span className="flex h-12 w-28 items-center justify-center rounded-xl bg-white px-3 shadow-sm">
               <img src={LOGO_URL} alt="SPC Brasil" className="h-auto w-full" />
             </span>
-            <span className="hidden border-l border-white/25 pl-3 text-sm font-semibold tracking-wide sm:block">Notificadora</span>
+            <span className="hidden border-l border-white/25 pl-3 text-sm font-semibold tracking-wide sm:block">SPC Informa</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex" aria-label="Navegação principal">
             <a href="#solucao" className="text-sm font-medium text-white/80 transition-colors hover:text-white">Solução</a>
             <a href="#beneficios" className="text-sm font-medium text-white/80 transition-colors hover:text-white">Benefícios</a>
             <a href="#seguranca" className="text-sm font-medium text-white/80 transition-colors hover:text-white">Segurança</a>
             <Button asChild className="h-11 rounded-full bg-[#FFD54A] px-6 font-bold text-[#003B7A] shadow-[0_8px_24px_rgba(255,213,74,.22)] hover:bg-[#ffe073]">
-              <Link href="/acesso">Acessar Notificadora</Link>
+              <Link href="/acesso">Acessar SPC Informa</Link>
             </Button>
           </nav>
           <button type="button" className="rounded-lg p-2 text-white md:hidden" onClick={() => setMenuOpen(value => !value)} aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} aria-expanded={menuOpen}>
@@ -63,7 +63,7 @@ export default function Home() {
               <a href="#solucao" onClick={() => setMenuOpen(false)}>Solução</a>
               <a href="#beneficios" onClick={() => setMenuOpen(false)}>Benefícios</a>
               <a href="#seguranca" onClick={() => setMenuOpen(false)}>Segurança</a>
-              <Button asChild className="mt-2 bg-[#FFD54A] font-bold text-[#003B7A] hover:bg-[#ffe073]"><Link href="/acesso">Acessar Notificadora</Link></Button>
+              <Button asChild className="mt-2 bg-[#FFD54A] font-bold text-[#003B7A] hover:bg-[#ffe073]"><Link href="/acesso">Acessar SPC Informa</Link></Button>
             </nav>
           </div>
         )}
@@ -80,14 +80,14 @@ export default function Home() {
                 Governança e eficiência para toda a operação
               </div>
               <h1 className="text-balance text-4xl font-extrabold leading-[1.06] tracking-[-0.035em] sm:text-5xl lg:text-7xl">
-                Notificadora multicanal com <span className="text-[#FFD54A]">controle de ponta a ponta.</span>
+                SPC Informa: comunicação multicanal com <span className="text-[#FFD54A]">controle de ponta a ponta.</span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-blue-50/85 lg:text-xl">
                 Uma plataforma concebida para o ecossistema SPC Brasil gerenciar comunicações, preços, organizações e resultados com segurança e clareza operacional.
               </p>
               <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Button asChild size="lg" className="h-14 rounded-full bg-[#FFD54A] px-8 text-base font-bold text-[#003B7A] shadow-[0_14px_40px_rgba(255,213,74,.24)] hover:bg-[#ffe073]">
-                  <Link href="/acesso">Acessar Notificadora <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                  <Link href="/acesso">Acessar SPC Informa <ArrowRight className="ml-2 h-5 w-5" /></Link>
                 </Button>
                 <a href="#solucao" className="inline-flex h-14 items-center justify-center rounded-full border border-white/25 px-8 font-semibold text-white transition-colors hover:bg-white/10">Conhecer a solução</a>
               </div>
@@ -131,10 +131,10 @@ export default function Home() {
         </section>
 
         <section id="seguranca" className="bg-[#003B7A] py-20 text-white lg:py-24">
-          <div className="container grid gap-12 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className="text-sm font-extrabold uppercase tracking-[.18em] text-[#FFD54A]">Segurança por arquitetura</p><h2 className="mt-4 max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">Acesso por perfil, autenticação em duas etapas e rastreabilidade operacional.</h2><p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100/75">Sessões protegidas, segregação organizacional e trilhas de auditoria ajudam a sustentar uma operação responsável e verificável.</p></div><Button asChild size="lg" className="h-14 rounded-full bg-[#00B67A] px-8 font-bold text-white hover:bg-[#00a66f]"><Link href="/acesso">Acessar Notificadora <ArrowRight className="ml-2" /></Link></Button></div>
+          <div className="container grid gap-12 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className="text-sm font-extrabold uppercase tracking-[.18em] text-[#FFD54A]">Segurança por arquitetura</p><h2 className="mt-4 max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">Acesso por perfil, autenticação em duas etapas e rastreabilidade operacional.</h2><p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100/75">Sessões protegidas, segregação organizacional e trilhas de auditoria ajudam a sustentar uma operação responsável e verificável.</p></div><Button asChild size="lg" className="h-14 rounded-full bg-[#00B67A] px-8 font-bold text-white hover:bg-[#00a66f]"><Link href="/acesso">Acessar SPC Informa <ArrowRight className="ml-2" /></Link></Button></div>
         </section>
       </main>
-      <footer className="bg-[#002F62] py-10 text-blue-100/70"><div className="container flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><span className="flex h-10 w-24 items-center justify-center rounded-lg bg-white px-2"><img src={LOGO_URL} alt="SPC Brasil" className="w-full" /></span><span className="text-sm font-semibold text-white">Notificadora</span></div><p className="text-sm">Plataforma de gestão multicanal para o ecossistema SPC Brasil.</p></div></footer>
+      <footer className="bg-[#002F62] py-10 text-blue-100/70"><div className="container flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><span className="flex h-10 w-24 items-center justify-center rounded-lg bg-white px-2"><img src={LOGO_URL} alt="SPC Brasil" className="w-full" /></span><span className="text-sm font-semibold text-white">SPC Informa</span></div><p className="text-sm">Plataforma de gestão multicanal para o ecossistema SPC Brasil.</p></div></footer>
     </div>
   );
 }

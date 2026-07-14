@@ -2,7 +2,7 @@
 
 ## 1. Objetivo e responsabilidades
 
-Este runbook orienta operação, suporte, segurança e manutenção da **Notificadora SPC Brasil**. Mudanças em produção exigem checkpoint, revisão de testes e publicação pela interface de gerenciamento. O processamento de campanhas é executado em requisições curtas; não depende de processo residente no contêiner.
+Este runbook orienta operação, suporte, segurança e manutenção do **SPC Informa**. Mudanças em produção exigem checkpoint, revisão de testes e publicação pela interface de gerenciamento. O processamento de campanhas é executado em requisições curtas; não depende de processo residente no contêiner.
 
 | Papel | Responsabilidade |
 | --- | --- |
@@ -27,7 +27,7 @@ O Heartbeat do projeto deve executar a cada minuto, em UTC, por meio do callback
 
 ```bash
 manus-heartbeat create \
-  --name notificadora-process-campaigns \
+  --name spc-informa-process-campaigns \
   --cron "0 * * * * *" \
   --path /api/scheduled/process-campaigns \
   --description "Processa campanhas e aplica retenção configurável de autenticação, PII, eventos e auditoria"

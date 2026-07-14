@@ -1,4 +1,4 @@
-# Notificadora SPC Brasil
+# SPC Informa
 
 Plataforma multi-organização para criação, precificação, agendamento, despacho e acompanhamento de notificações por canais integrados. O produto combina autenticação própria com 2FA, escopo hierárquico por organização, campanhas idempotentes, controles financeiros, brokers configuráveis, webhooks assinados, processamento periódico e trilha de auditoria.
 

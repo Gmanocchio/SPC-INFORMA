@@ -44,7 +44,7 @@ describe("variáveis homologadas de template", () => {
 
   it.each(["SMS", "EMAIL", "WHATSAPP", "RCS"] as const)("mantém o seletor alinhado ao layout de %s", channel => {
     expect(campaignImportLayout(channel).columns).toEqual(CAMPAIGN_IMPORT_COLUMNS);
-    expect(campaignImportLayout(channel).filename).toBe("modelo-notificadora-spc.csv");
+    expect(campaignImportLayout(channel).filename).toBe("modelo-spc-informa.csv");
   });
 
   it("gera o CSV e a primeira linha do XLSX com as mesmas nove colunas na ordem canônica", () => {

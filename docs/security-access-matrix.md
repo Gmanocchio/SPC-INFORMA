@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Esta matriz registra o contrato verificável de **autorização por perfil**, **isolamento organizacional** e **auditoria** da Notificadora SPC Brasil. O arquivo `server/governance-coverage.test.ts` transforma as fronteiras abaixo em testes de regressão executados pelo Vitest.
+Esta matriz registra o contrato verificável de **autorização por perfil**, **isolamento organizacional** e **auditoria** do SPC Informa. O arquivo `server/governance-coverage.test.ts` transforma as fronteiras abaixo em testes de regressão executados pelo Vitest.
 
 | Domínio | Fronteira da API | Regra de escopo | Eventos auditados |
 |---|---|---|---|

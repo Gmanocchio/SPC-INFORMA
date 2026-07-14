@@ -177,3 +177,10 @@
 - [x] Exibir o identificador na gestão de templates, no retorno de criação e no seletor de templates das campanhas
 - [x] Adicionar regressões de persistência, unicidade, imutabilidade, autorização e interface (32 testes focados aprovados)
 - [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar nova versão (TypeScript sem erros, 153 testes aprovados, 1 ignorado, build concluído e proteção responsiva confirmada nas rotas alteradas)
+- [x] Mapear todas as ocorrências visíveis de Notificadora, NOTIFICADORA e variações na interface, metadados, documentação operacional e e-mails
+- [x] Alterar o nome exibido do produto para SPC Informa em todas as páginas, layouts, títulos e mensagens do sistema
+- [x] Alterar remetente, assuntos e conteúdos dos e-mails transacionais para SPC Informa sem modificar credenciais secretas diretamente
+- [x] Atualizar configurações públicas da aplicação e textos de identidade visual para SPC Informa (metadados, fallback de ambiente e nome visível do remetente atualizados; título integrado é somente leitura e não é consumido nas superfícies da marca)
+- [x] Preservar somente identificadores técnicos internos cuja renomeação possa quebrar compatibilidade, garantindo que não fiquem visíveis ao usuário (cookie de sessão, domínio criptográfico e nome interno do pacote)
+- [x] Adicionar regressões contra ocorrências residuais da marca anterior e validar fluxos de e-mail
+- [x] Validar TypeScript, suíte Vitest, build e interface responsiva antes de salvar nova versão (TypeScript sem erros, 155 testes aprovados, 1 ignorado, build concluído, telas desktop e móvel verificadas sem erros atuais de execução)

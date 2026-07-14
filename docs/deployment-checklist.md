@@ -27,7 +27,7 @@ Somente depois de a versão com `/api/scheduled/process-campaigns` estar publica
 
 ```bash
 manus-heartbeat create \
-  --name notificadora-process-campaigns \
+  --name spc-informa-process-campaigns \
   --cron "0 * * * * *" \
   --path /api/scheduled/process-campaigns \
   --description "Processa campanhas e aplica retenção configurável de autenticação, PII, eventos e auditoria"

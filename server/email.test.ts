@@ -4,7 +4,7 @@ vi.mock("./_core/env", () => ({
   ENV: {
     sendGridApiKey: "test-api-key",
     sendGridFromEmail: "contato@example.com",
-    sendGridFromName: "NOTIFICADORA SPC BRASIL",
+    sendGridFromName: "SPC Informa",
   },
 }));
 

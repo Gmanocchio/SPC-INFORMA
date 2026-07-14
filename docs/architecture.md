@@ -1,4 +1,4 @@
-# Arquitetura da Notificadora SPC Brasil
+# Arquitetura do SPC Informa
 
 ## Visão geral
 
@@ -61,4 +61,3 @@ Uploads serão validados por extensão, MIME real, tamanho, quantidade de linhas
 ## Estratégia de implementação
 
 O primeiro ciclo entregará todos os módulos navegáveis, o modelo de dados, regras de acesso, APIs e testes automatizados, com integrações externas em modo seguro. O envio real dependerá das credenciais de SendGrid e de cada broker, dos remetentes/domínios aprovados e da publicação do ambiente. Nenhum destinatário real será contactado durante o desenvolvimento.
-

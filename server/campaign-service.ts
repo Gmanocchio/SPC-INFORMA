@@ -224,7 +224,7 @@ export function campaignTemplateSnapshotValues(template: typeof messageTemplates
 }
 
 export function campaignImportLayout(_channel: Channel) {
-  return { filename: "modelo-notificadora-spc.csv", columns: [...CAMPAIGN_IMPORT_COLUMNS], separator: ";", encoding: "UTF-8" };
+  return { filename: "modelo-spc-informa.csv", columns: [...CAMPAIGN_IMPORT_COLUMNS], separator: ";", encoding: "UTF-8" };
 }
 
 export async function listCampaignOptions(actor: DomainActor) {

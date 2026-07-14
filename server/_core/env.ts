@@ -10,5 +10,5 @@ export const ENV = {
   sendGridApiKey: process.env.SENDGRID_API_KEY ?? "",
   sendGridFromEmail: process.env.SENDGRID_FROM_EMAIL ?? "",
   sendGridFromName:
-    process.env.SENDGRID_FROM_NAME ?? "NOTIFICADORA SPC BRASIL",
+    process.env.SENDGRID_FROM_NAME ?? "SPC Informa",
 };

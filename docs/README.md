@@ -1,4 +1,4 @@
-# Documentação da Notificadora SPC Brasil
+# Documentação do SPC Informa
 
 | Documento | Finalidade |
 | --- | --- |

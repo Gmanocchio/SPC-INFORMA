@@ -45,13 +45,13 @@ Todos os campos possuirão rótulo persistente, ajuda contextual quando necessá
 
 | Seção | Conteúdo e função |
 |---|---|
-| Cabeçalho | Logo, links para benefícios, canais e segurança, além do CTA “Acessar Notificadora” |
+| Cabeçalho | Logo, links para benefícios, canais e segurança, além do CTA “Acessar SPC Informa” |
 | Hero | Promessa de orquestração multicanal, prova de governança e painel analítico ilustrativo |
 | Indicadores | Quatro cartões com canais, rastreabilidade, controle financeiro e isolamento organizacional |
 | Benefícios | Eficiência operacional, segurança, visão consolidada e personalização por organização |
 | Canais | SMS, E-mail, WhatsApp e RCS com descrições objetivas |
 | Segurança | RBAC, 2FA, auditoria, segregação e proteção de credenciais |
-| CTA final | Chamada curta e botão com texto exato “Acessar Notificadora” |
+| CTA final | Chamada curta e botão com texto exato “Acessar SPC Informa” |
 | Rodapé | Identidade do produto, navegação e aviso de ambiente institucional |
 
 ## Navegação autenticada

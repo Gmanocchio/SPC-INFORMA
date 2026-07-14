@@ -190,7 +190,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <img src={LOGO_URL} alt="SPC Brasil" className="h-auto w-20" />
-                  <span className="border-l border-slate-200 pl-2 text-xs font-bold text-[#004A99]">Notificadora</span>
+                  <span className="border-l border-slate-200 pl-2 text-xs font-bold text-[#004A99]">SPC Informa</span>
                 </div>
               ) : null}
             </div>
@@ -289,7 +289,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        {!isMobile && <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-7"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-400">{user?.organization.tradeName}</p><p className="mt-1 font-bold text-[#003B7A]">{activeMenuItem?.label ?? "Notificadora"}</p></div><div role="status" className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Sessão protegida</div></header>}
+        {!isMobile && <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-7"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-400">{user?.organization.tradeName}</p><p className="mt-1 font-bold text-[#003B7A]">{activeMenuItem?.label ?? "SPC Informa"}</p></div><div role="status" className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Sessão protegida</div></header>}
         <main id="conteudo-principal" tabIndex={-1} className="flex-1 bg-[#F5F7FA] p-4 sm:p-6 lg:p-7">{children}</main>
       </SidebarInset>
     </>
