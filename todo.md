@@ -163,3 +163,10 @@
 - [x] Garantir que seleção do credor, validação financeira, criação e edição de campanha usem a mesma regra centralizada de precificação (a preparação resolve o preço por vínculo e a campanha preserva esse valor durante edição e confirmação)
 - [x] Adicionar regressões de backend para credor direto do SPC Brasil, Distribuidora e CDL, incluindo ausência e vigência de preços (30 testes focados aprovados)
 - [x] Validar a correção com TypeScript, suíte Vitest completa e build de produção antes de salvar nova versão (TypeScript sem erros, 138 testes aprovados, 1 ignorado e build concluído)
+- [x] Auditar e corrigir o escopo do dashboard para incluir todos os credores ativos vinculados à Distribuidora ou CDL do administrador
+- [x] Consolidar nos totalizadores todos os envios, entregas, falhas e valores dos credores vinculados ao escopo do administrador
+- [x] Adicionar filtro opcional por credor no dashboard de DISTRIBUTOR_ADMIN e CDL_ADMIN, sem permitir acesso a credores externos
+- [x] Exibir gráfico de volume por credor para administradores de Distribuidora e CDL
+- [x] Manter a visão de usuário credor restrita aos próprios dados e preservar a visão exclusiva do SPC_ADMIN
+- [x] Adicionar regressões de backend e interface para agregação, filtro, gráfico e isolamento organizacional de Distribuidora e CDL (10 testes focados aprovados)
+- [x] Validar a alteração com TypeScript, suíte Vitest completa, build e interface responsiva antes de salvar nova versão (TypeScript sem erros, 146 testes aprovados, 1 ignorado, build concluído e contratos responsivos cobertos por regressão de interface; a captura anônima de /app confirmou a proteção por login)

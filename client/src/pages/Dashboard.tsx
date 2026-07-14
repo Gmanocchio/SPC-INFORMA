@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, CheckCircle2, CircleDollarSign, Clock3, Send, TrendingUp, TriangleAlert } from "lucide-react";
+import { useMemo, useState } from "react";
 
 const labels = { SMS: "SMS", EMAIL: "E-mail", WHATSAPP: "WhatsApp", RCS: "RCS" };
 const integer = new Intl.NumberFormat("pt-BR");
@@ -11,7 +13,12 @@ const organizationTypeLabel: Record<string, string> = { SPC_BRASIL: "SPC Brasil"
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const overview = trpc.dashboard.overview.useQuery(undefined, { refetchInterval: 30_000 });
+  const [selectedCreditorId, setSelectedCreditorId] = useState<number | null>(null);
+  const overviewInput = useMemo(
+    () => selectedCreditorId ? { creditorOrganizationId: selectedCreditorId } : undefined,
+    [selectedCreditorId],
+  );
+  const overview = trpc.dashboard.overview.useQuery(overviewInput, { refetchInterval: 30_000 });
   if (overview.isLoading) {
     return <div className="space-y-6"><Skeleton className="h-24" /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-40" />)}</div><Skeleton className="h-80" /></div>;
   }
@@ -29,9 +36,12 @@ export default function Dashboard() {
   ];
 
   return <div className="space-y-7">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
       <div><div className="flex items-center gap-3"><p className="text-sm font-bold uppercase tracking-[.14em] text-[#0066CC]">Visão executiva</p><Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">Atualização a cada 30 s</Badge></div><h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#003B7A]">Dashboard operacional</h1><p className="mt-2 text-slate-600">Acompanhe desempenho, entrega e consumo dentro do seu escopo de acesso.</p></div>
-      <div className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm text-slate-600"><Clock3 className="h-4 w-4" /> Desde {new Date(data.periodStart).toLocaleDateString("pt-BR")}</div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        {data.canFilterByCreditor ? <div data-testid="creditor-filter" className="min-w-64"><label className="mb-1.5 block text-xs font-bold uppercase tracking-[.08em] text-slate-500">Credor</label><Select value={selectedCreditorId?.toString() ?? "all"} onValueChange={value => setSelectedCreditorId(value === "all" ? null : Number(value))}><SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white"><SelectValue placeholder="Todos os credores" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os credores</SelectItem>{data.creditorOptions.map(creditor => <SelectItem key={creditor.id} value={creditor.id.toString()}>{creditor.tradeName}</SelectItem>)}</SelectContent></Select></div> : null}
+        <div className="flex h-11 items-center gap-2 rounded-xl border bg-white px-4 text-sm text-slate-600"><Clock3 className="h-4 w-4" /> Desde {new Date(data.periodStart).toLocaleDateString("pt-BR")}</div>
+      </div>
     </div>
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ label, value, detail, icon: Icon, accent }) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-3 text-3xl font-extrabold tracking-tight text-[#003B7A]">{value}</p></div><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></span></div><p className="mt-5 text-xs text-slate-400">{detail}</p></article>)}</div>
@@ -45,6 +55,11 @@ export default function Dashboard() {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-bold text-[#003B7A]">Volume diário</h2><p className="mt-1 text-sm text-slate-500">Envios confirmados nos últimos 30 dias</p>{data.byDay.length ? <MiniBars items={data.byDay.slice(-14).map(item => ({ label: new Date(`${item.period}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }), value: item.sent, title: `${item.period}: ${integer.format(item.sent)} envios` }))} /> : <EmptyChart />}</section>
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-bold text-[#003B7A]">Evolução mensal</h2><p className="mt-1 text-sm text-slate-500">Envios confirmados nos últimos 12 meses</p>{data.byMonth.length ? <MiniBars items={data.byMonth.map(item => ({ label: new Date(`${item.period}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "short" }), value: item.sent, title: `${item.period}: ${integer.format(item.sent)} envios` }))} /> : <EmptyChart />}</section>
     </div>
+
+    {data.canFilterByCreditor ? <section data-testid="creditor-volume-chart" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4"><div><h2 className="font-bold text-[#003B7A]">Volume por credor</h2><p className="mt-1 text-sm text-slate-500">Envios confirmados dos credores vinculados no período selecionado</p></div><BarChart3 className="h-5 w-5 shrink-0 text-[#0066CC]" /></div>
+      {data.byCreditor.length ? <MiniBars items={data.byCreditor.map(creditor => ({ label: creditor.creditorName, value: creditor.sent, title: `${creditor.creditorName}: ${integer.format(creditor.sent)} envios` }))} /> : <EmptyChart />}
+    </section> : null}
 
     {canViewOrganizationConsolidation && data.byOrganization.length ? <section data-testid="organization-consolidation" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div><h2 className="font-bold text-[#003B7A]">Consolidado por organização</h2><p className="mt-1 text-sm text-slate-500">Gráficos e tabela de CDLs, Distribuidoras e Credores no escopo SPC Brasil</p></div>

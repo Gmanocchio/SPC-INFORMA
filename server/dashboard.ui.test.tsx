@@ -44,12 +44,20 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     dashboard: {
       overview: {
-        useQuery: () => ({
-          data: overviewData,
-          isLoading: false,
-          isError: false,
-          error: null,
-        }),
+        useQuery: () => {
+          const canFilterByCreditor = ["DISTRIBUTOR", "CDL"].includes(mocks.currentUser?.organization.type ?? "");
+          return {
+            data: {
+              ...overviewData,
+              canFilterByCreditor,
+              creditorOptions: canFilterByCreditor ? [{ id: 12, tradeName: "VIVO" }] : [],
+              byCreditor: canFilterByCreditor ? [{ creditorId: 12, creditorName: "VIVO", sent: 10, delivered: 8, failed: 2, processedMicros: 1_300_000 }] : [],
+            },
+            isLoading: false,
+            isError: false,
+            error: null,
+          };
+        },
       },
     },
   },
@@ -69,6 +77,27 @@ describe("Dashboard por tipo de organização", () => {
     expect(screen.getByText("Envios no período")).toBeTruthy();
     expect(screen.queryByTestId("organization-consolidation")).toBeNull();
     expect(screen.queryByText("Consolidado por organização")).toBeNull();
+    expect(screen.queryByTestId("creditor-filter")).toBeNull();
+    expect(screen.queryByTestId("creditor-volume-chart")).toBeNull();
+  });
+
+  it.each([
+    ["administrador de Distribuidora", "DISTRIBUTOR"],
+    ["administrador de CDL", "CDL"],
+  ])("exibe filtro e volume por credor para %s", (_label, organizationType) => {
+    mocks.currentUser = {
+      user: { role: "ORG_ADMIN" },
+      organization: { type: organizationType },
+    };
+
+    render(<Dashboard />);
+
+    expect(screen.getByTestId("creditor-filter")).toBeTruthy();
+    expect(screen.getByText("Todos os credores")).toBeTruthy();
+    expect(screen.getByTestId("creditor-volume-chart")).toBeTruthy();
+    expect(screen.getByText("Volume por credor")).toBeTruthy();
+    expect(screen.getByText("VIVO")).toBeTruthy();
+    expect(screen.queryByTestId("organization-consolidation")).toBeNull();
   });
 
   it("mantém o consolidado para administrador do SPC Brasil", () => {
