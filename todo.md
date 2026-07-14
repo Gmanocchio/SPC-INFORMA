@@ -128,3 +128,13 @@
 - [x] Testar explicitamente que o schema e o mapeamento de persistência contêm os nove campos por destinatário
 - [x] Executar a renderização das nove variáveis em regressão parametrizada para E-mail, SMS, WhatsApp e RCS
 - [x] Inspecionar e registrar o trecho final da regressão parametrizada que cobre os quatro canais e as nove variáveis, com nova execução da suíte
+- [x] Redesenhar somente a tela de Precificação como matriz responsiva de canais por credores, sem alterar outras telas
+- [x] Exibir Base SPC Brasil e credores pelo nome empresarial, nunca por código ou identificador
+- [x] Exibir para SPC_ADMIN todos os credores autorizados e, para CDL_ADMIN e DISTRIBUTOR_ADMIN, somente os credores do respectivo escopo organizacional
+- [x] Representar preço vigente e ativo com célula verde, preço inativo ou ausente com célula vermelha e exibir legenda visível
+- [x] Permitir cadastrar ou editar o preço ao clicar em qualquer célula da matriz, preservando vigência histórica e auditoria
+- [x] Permitir que SPC_ADMIN mantenha preços-base e preços específicos diferentes para cada credor e canal
+- [x] Adicionar regressões de interface e backend para nomes de credores, estados visuais, edição por célula e isolamento por perfil
+- [x] Validar tipagem, suíte Vitest, build de produção e responsividade desktop e celular da nova tela de Precificação
+- [x] Comprovar por regressão explícita que preços-base e preços por credor registram auditoria ao criar nova vigência
+- [x] Executar e registrar validação visual da rota de Precificação em viewport móvel e complementar a matriz protegida com contratos responsivos automatizados

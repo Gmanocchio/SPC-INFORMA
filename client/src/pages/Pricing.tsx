@@ -1,105 +1,273 @@
-import { useState } from "react";
-import { BadgeDollarSign, Building2, Pencil, Plus, ShieldCheck } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  BadgeDollarSign,
+  Building2,
+  CheckCircle2,
+  Clock3,
+  Mail,
+  MessageCircle,
+  Pencil,
+  ShieldCheck,
+  Smartphone,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { QueryErrorState } from "@/components/QueryErrorState";
 import { trpc } from "@/lib/trpc";
+import {
+  buildPricingMatrixRows,
+  findCellRules,
+  PRICING_CHANNEL_LABELS,
+  PRICING_CHANNELS,
+  type PricingChannel,
+  type PricingMatrixRow,
+  type PricingOrganization,
+  type PricingRule,
+} from "./pricing-matrix";
 
-type Channel = "SMS" | "EMAIL" | "WHATSAPP" | "RCS";
-type PriceRule = {
-  id: number;
-  organizationId: number;
-  creditorOrganizationId: number | null;
-  channel: Channel;
-  priceType: "SPC_BASE" | "CREDITOR_PRICE";
-  unitPriceMicros: number;
-  validFrom: Date;
-  validUntil: Date | null;
-  active: boolean;
-};
-const channels: Channel[] = ["SMS", "EMAIL", "WHATSAPP", "RCS"];
-const labels = { SMS: "SMS", EMAIL: "E-mail", WHATSAPP: "WhatsApp", RCS: "RCS" };
+const channelIcons = {
+  EMAIL: Mail,
+  SMS: Smartphone,
+  WHATSAPP: MessageCircle,
+  RCS: MessageCircle,
+} satisfies Record<PricingChannel, typeof Mail>;
+
 const micros = (value: string) => Math.max(0, Math.round(Number(value.replace(",", ".")) * 1_000_000));
-const reais = (value: number) => (value / 1_000_000).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4 });
+const reais = (value: number) => (value / 1_000_000).toLocaleString("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 4,
+});
+
 const nowLocal = () => {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
-const emptyForm = () => ({ mode: "CREDITOR" as "BASE" | "CREDITOR", organizationId: "", creditorOrganizationId: "", channel: "SMS" as Channel, price: "", validFrom: nowLocal() });
+
+type SelectedCell = {
+  row: PricingMatrixRow;
+  channel: PricingChannel;
+  activeRule: PricingRule | null;
+  latestRule: PricingRule | null;
+};
 
 export default function Pricing() {
   const utils = trpc.useUtils();
-  const { data: identity } = trpc.auth.me.useQuery();
+  const { data: identity, isLoading: identityLoading, isError: identityIsError, error: identityError } = trpc.auth.me.useQuery();
   const rules = trpc.commercial.pricing.list.useQuery();
   const organizations = trpc.admin.organizations.list.useQuery({});
   const isSpc = identity?.user.role === "SPC_ADMIN";
-  const [open, setOpen] = useState(false);
-  const [replacingRuleId, setReplacingRuleId] = useState<number | null>(null);
-  const [form, setForm] = useState(emptyForm);
-  const closeDialog = () => { setOpen(false); setReplacingRuleId(null); setForm(emptyForm()); };
-  const onSaved = async (message: string) => { await utils.commercial.pricing.list.invalidate(); closeDialog(); toast.success(message); };
-  const base = trpc.commercial.pricing.setBase.useMutation({ onSuccess: () => onSaved("Nova vigência do preço-base registrada."), onError: error => toast.error(error.message) });
-  const creditor = trpc.commercial.pricing.setCreditor.useMutation({ onSuccess: () => onSaved("Nova vigência do preço do credor registrada."), onError: error => toast.error(error.message) });
-  const owners = organizations.data?.filter(item => ["CDL", "DISTRIBUTOR", "SPC_BRASIL"].includes(item.type)) ?? [];
-  const creditors = organizations.data?.filter(item => item.type === "CREDITOR" && (!form.organizationId || item.parentOrganizationId === Number(form.organizationId))) ?? [];
+  const actorOrganizationId = identity?.user.organizationId ?? 0;
+  const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
+  const [price, setPrice] = useState("");
+  const [validFrom, setValidFrom] = useState(nowLocal);
 
-  function startNewPrice() {
-    setReplacingRuleId(null);
-    setForm(emptyForm());
-  }
+  const matrixRows = useMemo(() => buildPricingMatrixRows({
+    organizations: (organizations.data ?? []) as PricingOrganization[],
+    actorOrganizationId,
+    isSpcAdmin: isSpc,
+  }), [actorOrganizationId, isSpc, organizations.data]);
 
-  function startPriceRevision(rule: PriceRule) {
-    setReplacingRuleId(rule.id);
-    setForm({
-      mode: rule.priceType === "SPC_BASE" ? "BASE" : "CREDITOR",
-      organizationId: String(rule.organizationId),
-      creditorOrganizationId: rule.creditorOrganizationId ? String(rule.creditorOrganizationId) : "",
-      channel: rule.channel,
-      price: (rule.unitPriceMicros / 1_000_000).toFixed(6).replace(".", ","),
-      validFrom: nowLocal(),
-    });
-    setOpen(true);
+  const pricingRules = (rules.data ?? []) as PricingRule[];
+  const totals = useMemo(() => {
+    let active = 0;
+    for (const row of matrixRows) {
+      for (const channel of PRICING_CHANNELS) {
+        if (findCellRules(pricingRules, row, channel).activeRule) active += 1;
+      }
+    }
+    const total = matrixRows.length * PRICING_CHANNELS.length;
+    return { active, inactive: total - active, total };
+  }, [matrixRows, pricingRules]);
+
+  const closeDialog = () => {
+    setSelectedCell(null);
+    setPrice("");
+    setValidFrom(nowLocal());
+  };
+
+  const onSaved = async () => {
+    await utils.commercial.pricing.list.invalidate();
+    closeDialog();
+    toast.success("Nova vigência do preço registrada.");
+  };
+
+  const base = trpc.commercial.pricing.setBase.useMutation({
+    onSuccess: onSaved,
+    onError: error => toast.error(error.message),
+  });
+
+  const creditor = trpc.commercial.pricing.setCreditor.useMutation({
+    onSuccess: onSaved,
+    onError: error => toast.error(error.message),
+  });
+
+  function openCell(row: PricingMatrixRow, channel: PricingChannel) {
+    const cellRules = findCellRules(pricingRules, row, channel);
+    const referenceRule = cellRules.activeRule ?? cellRules.latestRule;
+    setSelectedCell({ row, channel, ...cellRules });
+    setPrice(referenceRule ? (referenceRule.unitPriceMicros / 1_000_000).toFixed(6).replace(".", ",") : "");
+    setValidFrom(nowLocal());
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    const common = { channel: form.channel, unitPriceMicros: micros(form.price), validFrom: new Date(form.validFrom) };
-    if (form.mode === "BASE") base.mutate(common);
-    else creditor.mutate({ ...common, organizationId: isSpc ? Number(form.organizationId) : undefined, creditorOrganizationId: Number(form.creditorOrganizationId) });
+    if (!selectedCell) return;
+    const unitPriceMicros = micros(price);
+    if (!Number.isFinite(unitPriceMicros) || unitPriceMicros <= 0) {
+      toast.error("Informe um preço unitário maior que zero.");
+      return;
+    }
+    const common = { channel: selectedCell.channel, unitPriceMicros, validFrom: new Date(validFrom) };
+    if (selectedCell.row.priceType === "SPC_BASE") {
+      base.mutate(common);
+      return;
+    }
+    creditor.mutate({
+      ...common,
+      organizationId: isSpc ? selectedCell.row.organizationId : undefined,
+      creditorOrganizationId: selectedCell.row.creditorOrganizationId!,
+    });
   }
 
+  const loading = identityLoading || organizations.isLoading || rules.isLoading;
+  const isError = identityIsError || organizations.isError || rules.isError;
+  const error = identityError ?? organizations.error ?? rules.error;
+
   return <div className="space-y-6">
-    <section className="command-panel p-6 md:p-8">
-      <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div><div className="eyebrow"><BadgeDollarSign className="size-4" /> Governança financeira</div><h1 className="mt-3 text-3xl font-extrabold text-slate-950">Precificação</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Mantenha preços-base SPC visíveis e valores específicos por credor, canal e organização, sempre com vigência histórica.</p></div>
-        <Dialog open={open} onOpenChange={value => value ? setOpen(true) : closeDialog()}>
-          <DialogTrigger asChild><Button onClick={startNewPrice} className="h-11 bg-[#0066cc] px-5 text-white"><Plus className="size-4" /> Novo preço</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{replacingRuleId ? "Atualizar preço" : "Registrar nova vigência"}</DialogTitle><DialogDescription>{replacingRuleId ? "A alteração cria uma nova vigência e preserva integralmente o histórico anterior." : "A regra anterior é encerrada automaticamente na data informada."}</DialogDescription></DialogHeader>
-            <form className="space-y-4" onSubmit={submit}>
-              {isSpc && <Field label="Tipo de preço"><Select value={form.mode} disabled={Boolean(replacingRuleId)} onValueChange={value => setForm({ ...form, mode: value as typeof form.mode })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="BASE">Preço-base SPC</SelectItem><SelectItem value="CREDITOR">Preço do credor</SelectItem></SelectContent></Select></Field>}
-              {form.mode === "CREDITOR" && isSpc && <Field label="CDL / Distribuidora responsável"><Select value={form.organizationId} disabled={Boolean(replacingRuleId)} onValueChange={value => setForm({ ...form, organizationId: value, creditorOrganizationId: "" })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{owners.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.tradeName}</SelectItem>)}</SelectContent></Select></Field>}
-              {form.mode === "CREDITOR" && <Field label="Credor"><Select value={form.creditorOrganizationId} disabled={Boolean(replacingRuleId)} onValueChange={value => setForm({ ...form, creditorOrganizationId: value })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{creditors.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.tradeName}</SelectItem>)}</SelectContent></Select></Field>}
-              <div className="grid gap-4 sm:grid-cols-2"><Field label="Canal"><Select value={form.channel} disabled={Boolean(replacingRuleId)} onValueChange={value => setForm({ ...form, channel: value as Channel })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{channels.map(item => <SelectItem key={item} value={item}>{labels[item]}</SelectItem>)}</SelectContent></Select></Field><Field label="Preço unitário (R$)"><Input required inputMode="decimal" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} placeholder="0,0850" /></Field></div>
-              <Field label="Início da nova vigência"><Input required type="datetime-local" value={form.validFrom} onChange={event => setForm({ ...form, validFrom: event.target.value })} /></Field>
-              <div className="flex justify-end gap-3 border-t pt-4"><Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button><Button disabled={base.isPending || creditor.isPending} className="bg-[#0066cc] text-white">{replacingRuleId ? "Salvar nova vigência" : "Registrar preço"}</Button></div>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <section className="command-panel overflow-hidden p-6 md:p-8">
+      <div className="grid gap-6 xl:grid-cols-[1fr_auto] xl:items-end">
+        <div>
+          <div className="eyebrow"><BadgeDollarSign className="size-4" /> Governança financeira</div>
+          <h1 className="mt-3 text-3xl font-extrabold text-slate-950">Precificação por credor e canal</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+            Visualize os preços vigentes de cada credor. Selecione uma célula para cadastrar um valor ausente ou criar uma nova vigência.
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+          <SummaryCard label="Células" value={totals.total} tone="slate" />
+          <SummaryCard label="Ativas" value={totals.active} tone="green" />
+          <SummaryCard label="Inativas" value={totals.inactive} tone="red" />
+        </div>
       </div>
     </section>
-    <section className="command-panel p-4 md:p-6">
-      <div className="mb-5 flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]"><ShieldCheck className="size-5" /></span><div><h2 className="font-bold text-slate-950">Histórico e vigências</h2><p className="text-sm text-slate-500">Valores monetários são mantidos como inteiros de alta precisão. Atualizações geram nova vigência.</p></div></div>
-      {rules.isLoading ? <Skeleton className="h-48 w-full" /> : rules.isError ? <QueryErrorState message={rules.error.message} onRetry={() => void rules.refetch()} /> : rules.data?.length ? <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Escopo</TableHead><TableHead>Canal</TableHead><TableHead>Preço unitário</TableHead><TableHead>Início</TableHead><TableHead>Fim</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader><TableBody>{rules.data.map(rule => <TableRow key={rule.id}><TableCell><span className="inline-flex items-center gap-2"><Building2 className="size-4 text-[#0066cc]" />{rule.priceType === "SPC_BASE" ? "Base SPC Brasil" : `Credor #${rule.creditorOrganizationId}`}</span></TableCell><TableCell>{labels[rule.channel]}</TableCell><TableCell className="font-bold text-slate-900">{reais(rule.unitPriceMicros)}</TableCell><TableCell>{new Date(rule.validFrom).toLocaleString("pt-BR")}</TableCell><TableCell>{rule.validUntil ? new Date(rule.validUntil).toLocaleString("pt-BR") : "Sem término"}</TableCell><TableCell><Badge className={rule.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}>{rule.active ? "Vigente" : "Encerrado"}</Badge></TableCell><TableCell className="text-right">{rule.active && (isSpc || rule.priceType === "CREDITOR_PRICE") ? <Button size="sm" variant="outline" onClick={() => startPriceRevision(rule as PriceRule)}><Pencil className="size-4" /> Atualizar</Button> : <span className="text-xs text-slate-400">Histórico protegido</span>}</TableCell></TableRow>)}</TableBody></Table></div> : <div className="rounded-2xl border border-dashed bg-slate-50 p-10 text-center text-sm text-slate-500">Nenhuma regra de preço foi registrada.</div>}
+
+    <section className="command-panel overflow-hidden">
+      <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white p-4 md:p-6">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]"><ShieldCheck className="size-5" /></span>
+            <div>
+              <h2 className="font-bold text-slate-950">Matriz de preços</h2>
+              <p className="mt-1 text-sm text-slate-500">Os credores exibidos seguem automaticamente o escopo da sua organização.</p>
+            </div>
+          </div>
+          <div aria-label="Legenda dos preços" className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <span className="text-slate-500">Legenda:</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800"><CheckCircle2 className="size-4" /> Preço ativo</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-800"><XCircle className="size-4" /> Inativo ou sem preço</span>
+          </div>
+        </div>
+      </div>
+
+      {loading ? <div className="space-y-3 p-6"><Skeleton className="h-14 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
+        : isError && error ? <div className="p-6"><QueryErrorState message={error.message} onRetry={() => { void organizations.refetch(); void rules.refetch(); }} /></div>
+          : matrixRows.length ? <div className="overflow-x-auto">
+            <Table className="min-w-[940px]">
+              <TableHeader>
+                <TableRow className="border-b-0 bg-slate-950 hover:bg-slate-950">
+                  <TableHead className="sticky left-0 z-20 min-w-[260px] bg-slate-950 px-5 py-4 text-xs font-bold uppercase tracking-[0.12em] text-white">Credor</TableHead>
+                  {PRICING_CHANNELS.map(channel => {
+                    const Icon = channelIcons[channel];
+                    return <TableHead key={channel} className="min-w-[165px] px-3 py-4 text-center text-white">
+                      <span className="inline-flex items-center gap-2 text-sm font-bold"><Icon className="size-4 text-[#ffd54a]" />{PRICING_CHANNEL_LABELS[channel]}</span>
+                    </TableHead>;
+                  })}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {matrixRows.map((row, index) => <TableRow key={row.key} className="border-slate-200 hover:bg-transparent">
+                  <TableCell className={`sticky left-0 z-10 border-r border-slate-200 px-5 py-4 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${row.priceType === "SPC_BASE" ? "bg-blue-100 text-[#0066cc]" : "bg-slate-100 text-slate-600"}`}><Building2 className="size-5" /></span>
+                      <div className="min-w-0">
+                        <div className="truncate font-bold text-slate-950" title={row.name}>{row.name}</div>
+                        {row.ownerName && <div className="mt-0.5 truncate text-xs text-slate-500" title={row.ownerName}>{row.ownerName}</div>}
+                      </div>
+                    </div>
+                  </TableCell>
+                  {PRICING_CHANNELS.map(channel => {
+                    const { activeRule, latestRule } = findCellRules(pricingRules, row, channel);
+                    const referenceRule = activeRule ?? latestRule;
+                    return <TableCell key={`${row.key}-${channel}`} className={`p-2.5 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                      <button
+                        type="button"
+                        onClick={() => openCell(row, channel)}
+                        aria-label={`${activeRule ? "Editar" : "Cadastrar"} preço de ${PRICING_CHANNEL_LABELS[channel]} para ${row.name}`}
+                        className={`group flex min-h-20 w-full flex-col items-center justify-center rounded-xl border px-3 py-3 text-center shadow-sm transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066cc] focus-visible:ring-offset-2 active:scale-[0.97] ${activeRule ? "border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700" : "border-rose-700 bg-rose-600 text-white hover:bg-rose-700"}`}
+                      >
+                        <span className="text-base font-extrabold">{referenceRule ? reais(referenceRule.unitPriceMicros) : "Sem preço"}</span>
+                        <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-white/90">
+                          {activeRule ? <><CheckCircle2 className="size-3.5" /> Ativo</> : latestRule ? <><Clock3 className="size-3.5" /> Inativo</> : <><Pencil className="size-3.5" /> Cadastrar</>}
+                        </span>
+                      </button>
+                    </TableCell>;
+                  })}
+                </TableRow>)}
+              </TableBody>
+            </Table>
+          </div>
+            : <div className="p-6"><div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center"><Building2 className="mx-auto size-8 text-slate-400" /><h3 className="mt-3 font-bold text-slate-800">Nenhum credor ativo no seu escopo</h3><p className="mt-1 text-sm text-slate-500">Cadastre ou ative um credor para configurar preços por canal.</p></div></div>}
     </section>
+
+    <Dialog open={Boolean(selectedCell)} onOpenChange={open => { if (!open) closeDialog(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{selectedCell?.activeRule ? "Editar preço vigente" : "Cadastrar preço"}</DialogTitle>
+          <DialogDescription>A alteração cria uma nova vigência e mantém o histórico anterior protegido.</DialogDescription>
+        </DialogHeader>
+        {selectedCell && <form className="space-y-5" onSubmit={submit}>
+          <div className={`rounded-2xl border p-4 ${selectedCell.activeRule ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Credor</div>
+                <div className="mt-1 font-extrabold text-slate-950">{selectedCell.row.name}</div>
+                <div className="mt-1 text-sm text-slate-600">Canal: <strong>{PRICING_CHANNEL_LABELS[selectedCell.channel]}</strong></div>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${selectedCell.activeRule ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>{selectedCell.activeRule ? "Ativo" : "Inativo"}</span>
+            </div>
+          </div>
+          <Field label="Preço unitário (R$)">
+            <Input autoFocus required inputMode="decimal" value={price} onChange={event => setPrice(event.target.value)} placeholder="0,0850" />
+          </Field>
+          <Field label="Início da nova vigência">
+            <Input required type="datetime-local" value={validFrom} onChange={event => setValidFrom(event.target.value)} />
+          </Field>
+          <div className="flex justify-end gap-3 border-t pt-4">
+            <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
+            <Button disabled={base.isPending || creditor.isPending} className="bg-[#0066cc] text-white hover:bg-[#004a99]">{selectedCell.activeRule ? "Salvar nova vigência" : "Ativar preço"}</Button>
+          </div>
+        </form>}
+      </DialogContent>
+    </Dialog>
   </div>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
+function SummaryCard({ label, value, tone }: { label: string; value: number; tone: "slate" | "green" | "red" }) {
+  const tones = {
+    slate: "border-slate-200 bg-white text-slate-950",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    red: "border-rose-200 bg-rose-50 text-rose-800",
+  };
+  return <div className={`rounded-2xl border px-3 py-3 text-center shadow-sm ${tones[tone]}`}><div className="text-xl font-extrabold">{value}</div><div className="mt-0.5 text-[11px] font-bold uppercase tracking-wide opacity-70">{label}</div></div>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
+}

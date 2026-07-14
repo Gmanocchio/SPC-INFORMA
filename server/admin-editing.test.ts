@@ -79,7 +79,7 @@ describe("edição administrativa de registros persistidos", () => {
     expect(brokers).toContain("Editar broker");
     expect(commercialRouter).toContain("setBase: spcAdminProcedure");
     expect(commercialRouter).toContain("setCreditor: adminProcedure");
-    expect(pricing).toContain("startPriceRevision");
+    expect(pricing).toContain("openCell(row, channel)");
     expect(pricing).toContain("A alteração cria uma nova vigência");
     expect(commercialRouter).toContain("rotate: adminProcedure");
     expect(apiKeyService).toContain('action: "API_KEY_ROTATED"');
