@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { QueryErrorState } from "@/components/QueryErrorState";
+import { TemplateSelectionModal } from "@/components/TemplateSelectionModal";
 import { campaignFormAfterOwnerChange, creditorsForCampaignOwner } from "@/lib/campaign-options";
 import { trpc } from "@/lib/trpc";
 import { campaignImportCsvHeader, campaignImportHeaderRow } from "@shared/template-variables";
@@ -85,6 +86,7 @@ export default function Campaigns() {
   const utils = trpc.useUtils();
   const { data: identity } = trpc.auth.me.useQuery();
   const [open, setOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [processingStage, setProcessingStage] = useState(0);
@@ -351,18 +353,28 @@ export default function Campaigns() {
                     : null}
                 </Field>
                 <Field label="Template homologado">
-                  <Select
-                    value={form.templateId}
-                    onValueChange={value => setForm({ ...form, templateId: value })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left"
+                    onClick={() => setTemplateModalOpen(true)}
                   >
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      {templates.data?.map(item => (
-                        <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {form.templateId
+                      ? templates.data?.find(t => String(t.id) === form.templateId)?.name || "Template selecionado"
+                      : "Clique para selecionar um template"}
+                  </Button>
                 </Field>
+                <TemplateSelectionModal
+                  open={templateModalOpen}
+                  onOpenChange={setTemplateModalOpen}
+                  templates={templates.data as Array<{ id: number; name: string; channel: Channel; subject: string | null; content: string; variables: string[]; status: string; version: number }> | undefined}
+                  isLoading={templates.isLoading}
+                  isError={templates.isError}
+                  error={templates.error ? { message: templates.error.message } : undefined}
+                  onRetry={() => void templates.refetch()}
+                  onSelect={templateId => setForm({ ...form, templateId: String(templateId) })}
+                  selectedChannel={form.channel as Channel}
+                />
                 <Field label="Agendar para (opcional)">
                   <Input
                     type="datetime-local"

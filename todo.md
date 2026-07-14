@@ -144,3 +144,4 @@
 - [x] BUG CORRIGIDO: Base SPC Brasil agora aparece para DISTRIBUTOR_ADMIN - modificado listOrganizations para incluir SPC_BRASIL na query para CDL_ADMIN e DISTRIBUTOR_ADMIN, com regressões de backend validando SPC_BASE e SPC_BRASIL (113 testes aprovados)
 - [x] SECURITY BUG CORRIGIDO: DISTRIBUTOR_ADMIN e CDL_ADMIN não podem mais editar empresa SPC_BRASIL - implementado bloqueio em canManageOrganization, removido SPC_BRASIL de admin.organizations.list, adicionado commercial.pricing.organizations com SPC_BRASIL para Precificação apenas, com 3 regressões de autorização (117 testes aprovados, build sucesso)
 - [x] Adicionar coluna "Vinculado a" na tela de Empresas (SPC_ADMIN) mostrando nome da Distribuidora, CDL ou "SPC Brasil" (tipagem limpa, build sucesso)
+- [x] Substituir lista de templates por modal com preview visual mostrando título + renderização do template para todos os tipos de usuário que criam campanha (tipagem limpa, build sucesso)
