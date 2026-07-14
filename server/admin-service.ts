@@ -92,8 +92,8 @@ export async function listOrganizations(actor: Actor, input: { search?: string; 
   if (actor.role === "SPC_ADMIN") {
     return db.select(projection).from(organizations).where(and(isNull(organizations.deletedAt), input.type ? eq(organizations.type, input.type) : undefined, textFilter)).orderBy(desc(organizations.createdAt)).limit(200);
   }
-  // Para CDL_ADMIN e DISTRIBUTOR_ADMIN: retornar a propria organizacao, suas filhas (credores) e a organizacao SPC_BRASIL
-  return db.select(projection).from(organizations).where(and(isNull(organizations.deletedAt), or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId), eq(organizations.type, "SPC_BRASIL")), input.type ? eq(organizations.type, input.type) : undefined, textFilter)).orderBy(desc(organizations.createdAt)).limit(200);
+  // Para CDL_ADMIN e DISTRIBUTOR_ADMIN: retornar apenas a propria organizacao e suas filhas (credores)
+  return db.select(projection).from(organizations).where(and(isNull(organizations.deletedAt), or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId)), input.type ? eq(organizations.type, input.type) : undefined, textFilter)).orderBy(desc(organizations.createdAt)).limit(200);
 }
 
 export async function createOrganization(actor: Actor, input: OrganizationInput) {

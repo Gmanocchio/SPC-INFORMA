@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure, protectedProcedure, router, spcAdminProcedure } from "../_core/trpc";
 import { createApiKey, listApiKeys, revokeApiKey, rotateApiKey } from "../api-key-service";
-import { listPricing, setBasePrice, setCreditorPrice } from "../pricing-service";
+import { listPricing, listPricingOrganizations, setBasePrice, setCreditorPrice } from "../pricing-service";
 import { createTemplate, listAvailableTemplates, listTemplates, updateTemplate } from "../template-service";
 
 const channel = z.enum(["SMS", "EMAIL", "WHATSAPP", "RCS"]);
@@ -20,6 +20,7 @@ export const commercialRouter = router({
     update: spcAdminProcedure.input(templateFields.extend({ id: z.number().int().positive(), status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]) })).mutation(({ ctx, input }) => updateTemplate(actor(ctx), input.id, input)),
   }),
   pricing: router({
+    organizations: adminProcedure.query(({ ctx }) => listPricingOrganizations(actor(ctx))),
     list: adminProcedure.query(({ ctx }) => listPricing(actor(ctx))),
     setBase: spcAdminProcedure.input(priceFields).mutation(({ ctx, input }) => setBasePrice(actor(ctx), input)),
     setCreditor: adminProcedure.input(priceFields.extend({ organizationId: z.number().int().positive().optional(), creditorOrganizationId: z.number().int().positive() })).mutation(({ ctx, input }) => setCreditorPrice(actor(ctx), input)),

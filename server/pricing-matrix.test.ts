@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { canManageOrganization } from "./authorization";
 import {
   buildPricingMatrixRows,
   findCellRules,
@@ -9,7 +10,7 @@ import {
   type PricingRule,
 } from "../client/src/pages/pricing-matrix";
 
-const organizations: PricingOrganization[] = [
+const testOrganizations: PricingOrganization[] = [
   { id: 1, parentOrganizationId: null, type: "SPC_BRASIL", legalName: "SPC Brasil", tradeName: "SPC Brasil", status: "ACTIVE" },
   { id: 10, parentOrganizationId: 1, type: "CDL", legalName: "CDL Regional", tradeName: "CDL Regional", status: "ACTIVE" },
   { id: 20, parentOrganizationId: 1, type: "DISTRIBUTOR", legalName: "Distribuidora Nacional", tradeName: "Distribuidora Nacional", status: "ACTIVE" },
@@ -30,15 +31,15 @@ const rule = (values: Partial<PricingRule> & Pick<PricingRule, "id" | "organizat
 
 describe("matriz de precificação por credor e canal", () => {
   it("exibe Base SPC e todos os credores ativos pelo nome para SPC_ADMIN", () => {
-    const rows = buildPricingMatrixRows({ organizations, actorOrganizationId: 1, isSpcAdmin: true });
+    const rows = buildPricingMatrixRows({ organizations: testOrganizations, actorOrganizationId: 1, isSpcAdmin: true });
     expect(rows.map(row => row.name)).toEqual(["Base SPC Brasil", "Credor Alfa", "Credor Beta", "Credor Gama"]);
     expect(rows.map(row => row.name).join(" ")).not.toMatch(/#\d+|101|102|201/);
     expect(PRICING_CHANNELS).toEqual(["EMAIL", "SMS", "WHATSAPP", "RCS"]);
   });
 
   it("exibe Base SPC Brasil como primeira linha para CDL_ADMIN e DISTRIBUTOR_ADMIN, seguida pelos credores do escopo", () => {
-    const cdlRows = buildPricingMatrixRows({ organizations, actorOrganizationId: 10, isSpcAdmin: false });
-    const distributorRows = buildPricingMatrixRows({ organizations, actorOrganizationId: 20, isSpcAdmin: false });
+    const cdlRows = buildPricingMatrixRows({ organizations: testOrganizations, actorOrganizationId: 10, isSpcAdmin: false });
+    const distributorRows = buildPricingMatrixRows({ organizations: testOrganizations, actorOrganizationId: 20, isSpcAdmin: false });
     expect(cdlRows.map(row => row.name)).toEqual(["Base SPC Brasil", "Credor Alfa", "Credor Beta"]);
     expect(distributorRows.map(row => row.name)).toEqual(["Base SPC Brasil", "Credor Gama"]);
     expect(cdlRows[0]?.priceType).toBe("SPC_BASE");
@@ -56,7 +57,7 @@ describe("matriz de precificação por credor e canal", () => {
   });
 
   it("considera verde apenas a regra ativa e mantém a última regra inativa como referência editável", () => {
-    const rows = buildPricingMatrixRows({ organizations, actorOrganizationId: 10, isSpcAdmin: false });
+    const rows = buildPricingMatrixRows({ organizations: testOrganizations, actorOrganizationId: 10, isSpcAdmin: false });
     const row = rows[1]; // Pular Base SPC Brasil e usar primeiro credor
     const inactive = rule({ id: 1, organizationId: 10, creditorOrganizationId: 101, channel: "SMS", active: false, validFrom: new Date("2026-07-12T12:00:00.000Z") });
     const active = rule({ id: 2, organizationId: 10, creditorOrganizationId: 101, channel: "SMS", active: true, validFrom: new Date("2026-07-13T12:00:00.000Z") });
@@ -95,9 +96,39 @@ describe("matriz de precificação por credor e canal", () => {
     expect(service).toContain('or(eq(pricingRules.organizationId, actor.organizationId), eq(pricingRules.priceType, "SPC_BASE"))');
   });
 
-  it("retorna SPC_BRASIL para CDL_ADMIN e DISTRIBUTOR_ADMIN na listagem de organizacoes", () => {
+  it("bloqueia SPC_BRASIL em admin.organizations.list para nao-SPC_ADMIN mas permite em pricing.organizations", () => {
     const adminService = readFileSync(resolve(process.cwd(), "server/admin-service.ts"), "utf8");
-    expect(adminService).toContain('eq(organizations.type, "SPC_BRASIL")');
-    expect(adminService).toContain('or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId), eq(organizations.type, "SPC_BRASIL"))');
+    // SPC_BRASIL nao deve aparecer em admin.organizations.list para nao-SPC_ADMIN
+    expect(adminService).toContain('or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId))');
+    // Mas deve aparecer em commercial.pricing.organizations
+    const pricingService = readFileSync(resolve(process.cwd(), "server/pricing-service.ts"), "utf8");
+    expect(pricingService).toContain('listPricingOrganizations');
+    expect(pricingService).toContain('eq(organizations.type, "SPC_BRASIL")');
+  });
+
+  it("bloqueia edicao de SPC_BRASIL para nao-SPC_ADMIN em canManageOrganization", () => {
+    const authService = readFileSync(resolve(process.cwd(), "server/authorization.ts"), "utf8");
+    expect(authService).toContain('target.type === "SPC_BRASIL" && actor.role !== "SPC_ADMIN"');
+    expect(authService).toContain('return false');
+  });
+});
+
+describe("Segurança: Bloqueio de edição de SPC_BRASIL para não-SPC_ADMIN", () => {
+  it("rejeita canManageOrganization de SPC_BRASIL por DISTRIBUTOR_ADMIN", () => {
+    const distributorAdmin = { id: 999, organizationId: 1, role: "ORG_ADMIN" as const };
+    const result = canManageOrganization(distributorAdmin, { id: 1, parentOrganizationId: null, type: "SPC_BRASIL" });
+    expect(result).toBe(false);
+  });
+
+  it("permite canManageOrganization de própria organização por DISTRIBUTOR_ADMIN", () => {
+    const distributorAdmin = { id: 999, organizationId: 1, role: "ORG_ADMIN" as const };
+    const result = canManageOrganization(distributorAdmin, { id: 1, parentOrganizationId: null });
+    expect(result).toBe(true);
+  });
+
+  it("permite canManageOrganization de SPC_BRASIL por SPC_ADMIN", () => {
+    const spcAdmin = { id: 1, organizationId: 1, role: "SPC_ADMIN" as const };
+    const result = canManageOrganization(spcAdmin, { id: 1, parentOrganizationId: null, type: "SPC_BRASIL" });
+    expect(result).toBe(true);
   });
 });

@@ -11,6 +11,16 @@ async function requireDb() {
   return db;
 }
 
+export async function listPricingOrganizations(actor: DomainActor) {
+  const db = await requireDb();
+  // Para Precificacao: retornar a propria organizacao, suas filhas (credores) e a organizacao SPC_BRASIL
+  return db.select({ id: organizations.id, parentOrganizationId: organizations.parentOrganizationId, type: organizations.type, legalName: organizations.legalName, tradeName: organizations.tradeName, status: organizations.status }).from(organizations).where(
+    actor.role === "SPC_ADMIN"
+      ? isNull(organizations.deletedAt)
+      : and(isNull(organizations.deletedAt), or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId), eq(organizations.type, "SPC_BRASIL"))),
+  ).orderBy(desc(organizations.createdAt));
+}
+
 export async function listPricing(actor: DomainActor) {
   const db = await requireDb();
   return db.select().from(pricingRules).where(

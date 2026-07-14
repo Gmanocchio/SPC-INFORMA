@@ -61,7 +61,7 @@ export default function Pricing() {
   const utils = trpc.useUtils();
   const { data: identity, isLoading: identityLoading, isError: identityIsError, error: identityError } = trpc.auth.me.useQuery();
   const rules = trpc.commercial.pricing.list.useQuery();
-  const organizations = trpc.admin.organizations.list.useQuery({});
+  const organizations = trpc.commercial.pricing.organizations.useQuery();
   const isSpc = identity?.user.role === "SPC_ADMIN";
   const actorOrganizationId = identity?.user.organizationId ?? 0;
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
