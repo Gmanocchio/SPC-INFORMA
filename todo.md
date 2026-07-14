@@ -153,3 +153,6 @@
 - [x] Ampliar a largura do modal de seleção de templates em desktop para eliminar o aspecto espremido
 - [x] Aumentar a área útil dos cards e da pré-visualização, preservando rolagem e responsividade móvel
 - [x] Validar o modal ampliado por contratos responsivos de desktop e celular, executar testes, TypeScript e build (124 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
+- [x] Ocultar “Consolidado por organização” no dashboard quando o usuário estiver vinculado a uma organização do tipo CREDITOR
+- [x] Preservar os indicadores próprios do credor e manter o consolidado disponível somente para SPC_ADMIN da organização SPC Brasil
+- [x] Adicionar regressões de interface por tipo de organização e validar testes, TypeScript e build (126 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)

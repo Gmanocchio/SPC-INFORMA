@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, CheckCircle2, CircleDollarSign, Clock3, Send, TrendingUp, TriangleAlert } from "lucide-react";
 
@@ -9,6 +10,7 @@ const currency = (micros: number) => (micros / 1_000_000).toLocaleString("pt-BR"
 const organizationTypeLabel: Record<string, string> = { SPC_BRASIL: "SPC Brasil", CDL: "CDL", DISTRIBUTOR: "Distribuidora", CREDITOR: "Credor" };
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const overview = trpc.dashboard.overview.useQuery(undefined, { refetchInterval: 30_000 });
   if (overview.isLoading) {
     return <div className="space-y-6"><Skeleton className="h-24" /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-40" />)}</div><Skeleton className="h-80" /></div>;
@@ -18,6 +20,7 @@ export default function Dashboard() {
   }
 
   const data = overview.data;
+  const canViewOrganizationConsolidation = user?.user.role === "SPC_ADMIN" && user.organization.type === "SPC_BRASIL";
   const cards = [
     { label: "Envios no período", value: integer.format(data.sent), detail: `${integer.format(data.campaignCount)} campanhas`, icon: Send, accent: "text-[#0066CC] bg-blue-50" },
     { label: "Entregas confirmadas", value: integer.format(data.delivered), detail: `${integer.format(data.failed)} falhas`, icon: CheckCircle2, accent: "text-[#00A86B] bg-emerald-50" },
@@ -43,7 +46,7 @@ export default function Dashboard() {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-bold text-[#003B7A]">Evolução mensal</h2><p className="mt-1 text-sm text-slate-500">Envios confirmados nos últimos 12 meses</p>{data.byMonth.length ? <MiniBars items={data.byMonth.map(item => ({ label: new Date(`${item.period}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "short" }), value: item.sent, title: `${item.period}: ${integer.format(item.sent)} envios` }))} /> : <EmptyChart />}</section>
     </div>
 
-    {data.byOrganization.length ? <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    {canViewOrganizationConsolidation && data.byOrganization.length ? <section data-testid="organization-consolidation" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div><h2 className="font-bold text-[#003B7A]">Consolidado por organização</h2><p className="mt-1 text-sm text-slate-500">Gráficos e tabela de CDLs, Distribuidoras e Credores no escopo SPC Brasil</p></div>
       <div className="mt-6 grid gap-4 xl:grid-cols-3">{(["CDL", "DISTRIBUTOR", "CREDITOR"] as const).map(type => {
         const rows = data.byOrganization.filter(item => item.organizationType === type);
