@@ -88,4 +88,16 @@ describe("matriz de precificação por credor e canal", () => {
     expect(service).toContain('action: "CREDITOR_PRICE_SET"');
     expect(service.match(/await writeAudit\(/g)).toHaveLength(2);
   });
+
+  it("retorna SPC_BASE para CDL_ADMIN e DISTRIBUTOR_ADMIN na listagem de precos", () => {
+    const service = readFileSync(resolve(process.cwd(), "server/pricing-service.ts"), "utf8");
+    expect(service).toContain('eq(pricingRules.priceType, "SPC_BASE")');
+    expect(service).toContain('or(eq(pricingRules.organizationId, actor.organizationId), eq(pricingRules.priceType, "SPC_BASE"))');
+  });
+
+  it("retorna SPC_BRASIL para CDL_ADMIN e DISTRIBUTOR_ADMIN na listagem de organizacoes", () => {
+    const adminService = readFileSync(resolve(process.cwd(), "server/admin-service.ts"), "utf8");
+    expect(adminService).toContain('eq(organizations.type, "SPC_BRASIL")');
+    expect(adminService).toContain('or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId), eq(organizations.type, "SPC_BRASIL"))');
+  });
 });

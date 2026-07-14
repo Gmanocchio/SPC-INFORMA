@@ -141,3 +141,4 @@
 - [x] Exibir Base SPC Brasil como primeira linha (somente leitura) na matriz de Precificação para CDL_ADMIN e DISTRIBUTOR_ADMIN, seguida pelos credores do escopo da organização
 - [x] Adicionar regressão para validar que CDL_ADMIN e DISTRIBUTOR_ADMIN veem Base SPC Brasil + credores do escopo
 - [x] Validar tipagem, testes, build e interface da matriz com Base SPC Brasil visível (111 testes aprovados, build sucesso)
+- [x] BUG CORRIGIDO: Base SPC Brasil agora aparece para DISTRIBUTOR_ADMIN - modificado listOrganizations para incluir SPC_BRASIL na query para CDL_ADMIN e DISTRIBUTOR_ADMIN, com regressões de backend validando SPC_BASE e SPC_BRASIL (113 testes aprovados)
