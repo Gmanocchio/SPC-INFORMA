@@ -41,6 +41,7 @@ function renderSafePreview(value: string): string {
 
 interface Template {
   id: number;
+  publicId: string;
   name: string;
   channel: Channel;
   subject: string | null;
@@ -119,7 +120,10 @@ export function TemplateSelectionModal({
                         <span className="text-sm text-slate-500">{channelLabel[template.channel]}</span>
                       </div>
                     </div>
-                    <Badge variant="secondary">v{template.version}</Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <Badge variant="outline" className="font-mono text-[#004a99]">{template.publicId}</Badge>
+                      <Badge variant="secondary">v{template.version}</Badge>
+                    </div>
                   </div>
 
                   {previewSubject && (

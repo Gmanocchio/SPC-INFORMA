@@ -39,6 +39,7 @@ describe("listAvailableTemplates - Integration Test", () => {
 
     expect(result.length).toBeGreaterThan(0);
     expect(result.every(t => t.channel === "SMS" || t.channel === "EMAIL" || t.channel === "WHATSAPP" || t.channel === "RCS")).toBe(true);
+    expect(result.every(t => t.publicId === `TP-${String(t.id).padStart(6, "0")}`)).toBe(true);
   });
 
   it("filtra por canal SMS", async () => {

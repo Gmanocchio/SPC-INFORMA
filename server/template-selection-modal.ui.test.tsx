@@ -9,6 +9,7 @@ import { TemplateSelectionModal } from "../client/src/components/TemplateSelecti
 const availableTemplates = [
   {
     id: 510001,
+    publicId: "TP-510001",
     name: "SMS Cobrança amigável",
     channel: "SMS" as const,
     subject: null,
@@ -18,6 +19,7 @@ const availableTemplates = [
   },
   {
     id: 510002,
+    publicId: "TP-510002",
     name: "E-mail Cobrança amigável",
     channel: "EMAIL" as const,
     subject: "Negocie sua pendência",
@@ -53,6 +55,7 @@ describe("TemplateSelectionModal", () => {
     expect(dialog.className).toContain("sm:max-w-[calc(100vw-3rem)]");
     expect(within(dialog).getByTestId("template-grid").className).toContain("lg:grid-cols-2");
     expect(within(dialog).getByTestId("template-card-510001").className).toContain("min-h-[30rem]");
+    expect(within(dialog).getByText("TP-510001")).toBeTruthy();
     expect(within(dialog).getByText("SMS Cobrança amigável")).toBeTruthy();
     expect(within(dialog).queryByText("E-mail Cobrança amigável")).toBeNull();
     expect(within(dialog).queryByText("Nenhum template disponível")).toBeNull();

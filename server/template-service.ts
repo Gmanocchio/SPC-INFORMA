@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { campaigns, messageTemplates } from "../drizzle/schema";
+import { campaigns, messageTemplates, organizations } from "../drizzle/schema";
+import { formatTemplatePublicId } from "../shared/template-id";
 import {
   extractTemplateVariables,
   findUnsupportedTemplateVariables,
@@ -25,6 +26,20 @@ async function requireDb() {
   return db;
 }
 
+async function assertSpcBrasilAdmin(actor: DomainActor, db: Awaited<ReturnType<typeof requireDb>>) {
+  if (actor.role !== "SPC_ADMIN") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Somente administradores do SPC Brasil podem gerenciar templates." });
+  }
+  const [actorOrganization] = await db
+    .select({ type: organizations.type })
+    .from(organizations)
+    .where(eq(organizations.id, actor.organizationId))
+    .limit(1);
+  if (actorOrganization?.type !== "SPC_BRASIL") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Somente administradores vinculados ao SPC Brasil podem gerenciar templates." });
+  }
+}
+
 export function validateTemplateInput(channel: Channel, subject: string | null | undefined, content: string) {
   if (channel === "EMAIL" && !subject?.trim()) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "O assunto é obrigatório para templates de e-mail." });
@@ -44,7 +59,7 @@ export function validateTemplateInput(channel: Channel, subject: string | null |
 export async function listAvailableTemplates(actor: DomainActor, channel?: Channel) {
   const db = await requireDb();
   // Return templates from SPC Brasil (organizationId = 1) for all users
-  return db
+  const templates = await db
     .select({
       id: messageTemplates.id,
       name: messageTemplates.name,
@@ -63,17 +78,26 @@ export async function listAvailableTemplates(actor: DomainActor, channel?: Chann
       )
     )
     .orderBy(messageTemplates.channel, messageTemplates.name);
+  return templates.map(template => ({
+    ...template,
+    publicId: formatTemplatePublicId(template.id),
+  }));
 }
 
 export async function listTemplates(actor: DomainActor) {
-  if (actor.role !== "SPC_ADMIN") throw new TRPCError({ code: "FORBIDDEN" });
   const db = await requireDb();
-  return db.select().from(messageTemplates).orderBy(desc(messageTemplates.updatedAt));
+  await assertSpcBrasilAdmin(actor, db);
+  const templates = await db.select().from(messageTemplates).orderBy(desc(messageTemplates.updatedAt));
+  return templates.map(template => ({
+    ...template,
+    publicId: formatTemplatePublicId(template.id),
+  }));
 }
 
 export async function createTemplate(actor: DomainActor, input: { name: string; channel: Channel; subject?: string | null; content: string; status: "DRAFT" | "ACTIVE" }) {
   validateTemplateInput(input.channel, input.subject, input.content);
   const db = await requireDb();
+  await assertSpcBrasilAdmin(actor, db);
   const variables = extractTemplateVariables(input.subject, input.content);
   const result = await db.insert(messageTemplates).values({
     organizationId: actor.organizationId,
@@ -86,13 +110,15 @@ export async function createTemplate(actor: DomainActor, input: { name: string; 
     createdByUserId: actor.id,
   });
   const id = Number(result[0].insertId);
-  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "TEMPLATE_CREATED", resourceType: "message_template", resourceId: id, metadata: { channel: input.channel, status: input.status, variables } });
-  return { id };
+  const publicId = formatTemplatePublicId(id);
+  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "TEMPLATE_CREATED", resourceType: "message_template", resourceId: id, metadata: { publicId, channel: input.channel, status: input.status, variables } });
+  return { id, publicId };
 }
 
 export async function updateTemplate(actor: DomainActor, id: number, input: { name: string; channel: Channel; subject?: string | null; content: string; status: "DRAFT" | "ACTIVE" | "ARCHIVED" }) {
   validateTemplateInput(input.channel, input.subject, input.content);
   const db = await requireDb();
+  await assertSpcBrasilAdmin(actor, db);
   const normalizedSubject = input.channel === "EMAIL" ? input.subject?.trim() ?? null : null;
   const variables = extractTemplateVariables(input.subject, input.content);
   const updatedVersion = await db.transaction(async tx => {
@@ -122,6 +148,6 @@ export async function updateTemplate(actor: DomainActor, id: number, input: { na
     }
     return existing.version + 1;
   });
-  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "TEMPLATE_UPDATED", resourceType: "message_template", resourceId: id, metadata: { channel: input.channel, status: input.status, version: updatedVersion } });
+  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "TEMPLATE_UPDATED", resourceType: "message_template", resourceId: id, metadata: { publicId: formatTemplatePublicId(id), channel: input.channel, status: input.status, version: updatedVersion } });
   return { success: true as const };
 }

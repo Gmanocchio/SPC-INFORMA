@@ -69,4 +69,15 @@ describe("contratos arquiteturais de qualidade das telas críticas", () => {
     expect(styles).toContain(".variable-picker-scrollbar::-webkit-scrollbar");
     expect(styles).toContain("scrollbar-color:");
   });
+
+  it("exibe o identificador público do template na gestão e na seleção de campanhas", () => {
+    const templatesPage = read("client/src/pages/Templates.tsx");
+    expect(templatesPage).toContain("<TableHead>ID</TableHead>");
+    expect(templatesPage).toContain("template.publicId");
+    expect(templatesPage).toContain("createdTemplate.publicId");
+
+    const selectionModal = read("client/src/components/TemplateSelectionModal.tsx");
+    expect(selectionModal).toContain("publicId: string");
+    expect(selectionModal).toContain("template.publicId");
+  });
 });

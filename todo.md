@@ -170,3 +170,10 @@
 - [x] Manter a visão de usuário credor restrita aos próprios dados e preservar a visão exclusiva do SPC_ADMIN
 - [x] Adicionar regressões de backend e interface para agregação, filtro, gráfico e isolamento organizacional de Distribuidora e CDL (10 testes focados aprovados)
 - [x] Validar a alteração com TypeScript, suíte Vitest completa, build e interface responsiva antes de salvar nova versão (TypeScript sem erros, 146 testes aprovados, 1 ignorado, build concluído e contratos responsivos cobertos por regressão de interface; a captura anônima de /app confirmou a proteção por login)
+- [x] Adicionar identificador público único e imutável a cada template no formato TP-000232 (derivado da chave primária imutável)
+- [x] Preencher identificadores únicos para templates existentes sem alterar seus vínculos históricos (derivação automática, sem migração destrutiva)
+- [x] Gerar automaticamente o identificador em novas criações e impedir duplicidade no banco de dados (a unicidade é garantida pela chave primária do template)
+- [x] Manter a criação e a edição de templates restritas exclusivamente a SPC_ADMIN da organização SPC Brasil, com defesa adicional na camada de domínio
+- [x] Exibir o identificador na gestão de templates, no retorno de criação e no seletor de templates das campanhas
+- [x] Adicionar regressões de persistência, unicidade, imutabilidade, autorização e interface (32 testes focados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar nova versão (TypeScript sem erros, 153 testes aprovados, 1 ignorado, build concluído e proteção responsiva confirmada nas rotas alteradas)

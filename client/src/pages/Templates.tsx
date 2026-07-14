@@ -49,11 +49,11 @@ export default function Templates() {
   });
   const templates = trpc.commercial.templates.list.useQuery();
   const create = trpc.commercial.templates.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async createdTemplate => {
       await utils.commercial.templates.list.invalidate();
       setOpen(false);
       setForm({ name: "", channel: "SMS", subject: "", content: "", status: "DRAFT" });
-      toast.success("Template registrado na biblioteca homologada.");
+      toast.success(`Template ${createdTemplate.publicId} registrado na biblioteca homologada.`);
     },
     onError: error => toast.error(error.message),
   });
@@ -250,11 +250,12 @@ export default function Templates() {
         {templates.isLoading ? <Skeleton className="h-48 w-full" /> : templates.isError ? <QueryErrorState message={templates.error.message} onRetry={() => void templates.refetch()} /> : templates.data?.length ? (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader><TableRow><TableHead>Template</TableHead><TableHead>Canal</TableHead><TableHead>Variáveis</TableHead><TableHead>Versão</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Template</TableHead><TableHead>Canal</TableHead><TableHead>Variáveis</TableHead><TableHead>Versão</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
               <TableBody>{templates.data.map(template => {
                 const Icon = channelIcon[template.channel];
                 return (
                   <TableRow key={template.id}>
+                    <TableCell><Badge variant="outline" className="whitespace-nowrap font-mono text-[#004a99]">{template.publicId}</Badge></TableCell>
                     <TableCell><div className="font-semibold text-slate-900">{template.name}</div><div className="max-w-md truncate text-xs text-slate-500">{template.subject || template.content}</div></TableCell>
                     <TableCell><span className="inline-flex items-center gap-2"><Icon className="size-4 text-[#0066cc]" />{channelLabel[template.channel]}</span></TableCell>
                     <TableCell><div className="flex max-w-sm flex-wrap gap-1">{template.variables.length ? template.variables.map(variable => <Badge key={variable} variant="secondary"><Braces className="mr-1 size-3" />{variable}</Badge>) : <span className="text-sm text-slate-400">Sem variáveis</span>}</div></TableCell>
