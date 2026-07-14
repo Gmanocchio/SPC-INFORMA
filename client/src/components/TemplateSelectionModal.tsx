@@ -46,7 +46,6 @@ interface Template {
   subject: string | null;
   content: string;
   variables: string[];
-  status: string;
   version: number;
 }
 
@@ -73,9 +72,11 @@ export function TemplateSelectionModal({
   onSelect,
   selectedChannel,
 }: TemplateSelectionModalProps) {
+  // commercial.templates.available já garante status ACTIVE no servidor.
+  // O payload público não inclui status; filtrar por esse campo descartava todos os itens.
   const filteredTemplates = selectedChannel
-    ? templates?.filter(t => t.channel === selectedChannel && t.status === "ACTIVE")
-    : templates?.filter(t => t.status === "ACTIVE");
+    ? templates?.filter(template => template.channel === selectedChannel)
+    : templates;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

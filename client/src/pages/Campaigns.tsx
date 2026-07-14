@@ -367,7 +367,7 @@ export default function Campaigns() {
                 <TemplateSelectionModal
                   open={templateModalOpen}
                   onOpenChange={setTemplateModalOpen}
-                  templates={templates.data as Array<{ id: number; name: string; channel: Channel; subject: string | null; content: string; variables: string[]; status: string; version: number }> | undefined}
+                  templates={templates.data}
                   isLoading={templates.isLoading}
                   isError={templates.isError}
                   error={templates.error ? { message: templates.error.message } : undefined}

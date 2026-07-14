@@ -146,3 +146,7 @@
 - [x] Adicionar coluna "Vinculado a" na tela de Empresas (SPC_ADMIN) mostrando nome da Distribuidora, CDL ou "SPC Brasil" (tipagem limpa, build sucesso)
 - [x] Substituir lista de templates por modal com preview visual mostrando título + renderização do template para todos os tipos de usuário que criam campanha (tipagem limpa, build sucesso)
 - [x] BUG CORRIGIDO: Modal de templates mostra "Nenhum template disponível" - corrigida função listAvailableTemplates para filtrar apenas templates do SPC Brasil (organizationId = 1), adicionados 2 testes de regressão + 4 testes de integração, 123 testes aprovados, build sucesso
+- [x] BUG RECORRENTE: identificado filtro client-side por status ausente no payload de commercial.templates.available, que eliminava todos os templates ativos
+- [x] Corrigir o contrato entre listAvailableTemplates, tipagem do cliente e TemplateSelectionModal sem coerção insegura
+- [x] Adicionar regressão do componente real comprovando a renderização e seleção de template ativo por canal
+- [x] Executar suíte Vitest, verificação TypeScript e build antes de criar nova versão (124 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
