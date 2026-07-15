@@ -192,3 +192,9 @@
 - [x] Preservar o consolidado hierárquico exclusivamente para SPC_ADMIN da organização SPC Brasil e manter os demais dashboards inalterados
 - [x] Adicionar regressões de backend e interface para escopo, vínculos, totais por credor, grupos vazios e responsividade (14 verificações direcionadas aprovadas)
 - [x] Validar TypeScript, suíte Vitest, build e interface do consolidado hierárquico antes de salvar nova versão (TypeScript sem erros, 158 testes aprovados, 1 ignorado, build concluído, contratos desktop/móvel cobertos e sem erros atuais de execução)
+- [x] Reproduzir por dados reais por que Jeitto e Vivo, apesar de vinculados diretamente ao SPC Brasil e possuírem disparos, não aparecem no consolidado (ambos estavam sem vínculo preenchido, mas com campanhas e disparos registrados sob organizationId do SPC Brasil)
+- [x] Corrigir a resolução do vínculo direto com SPC Brasil considerando os campos efetivamente persistidos nas organizações e campanhas existentes
+- [x] Exibir no combo SPC Brasil todo credor diretamente vinculado que possua disparos dentro do período selecionado, com coluna e métricas próprias
+- [x] Alinhar a tabela detalhada para listar os mesmos credores diretos exibidos no combo SPC Brasil
+- [x] Adicionar regressões para Jeitto, Vivo, variações de vínculo legado e isolamento dos grupos CDL/Distribuidora (14 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a versão corrigida (TypeScript sem erros, 159 testes aprovados, 1 ignorado, build concluído e sem erros atuais de execução)

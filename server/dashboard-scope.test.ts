@@ -120,4 +120,34 @@ describe("consolidação hierárquica do dashboard SPC Central", () => {
     expect(groups.find(group => group.organizationId === 10)?.creditors).toContainEqual(expect.objectContaining({ creditorOrganizationId: 101 }));
     expect(groups.find(group => group.organizationId === 1)?.creditors).not.toContainEqual(expect.objectContaining({ creditorOrganizationId: 101 }));
   });
+
+  it("inclui Jeitto e Vivo no SPC Brasil quando o vínculo legado está vazio e há disparos da organização central", () => {
+    const groups = buildSpcOrganizationConsolidation(1, [
+      { id: 1, organizationName: "SPC Brasil", organizationType: "SPC_BRASIL", linkedToOrganizationId: null, parentOrganizationId: null },
+      { id: 10, organizationName: "CDL Curitiba", organizationType: "CDL", linkedToOrganizationId: null, parentOrganizationId: 1 },
+      { id: 20, organizationName: "Distribuidora Sul", organizationType: "DISTRIBUTOR", linkedToOrganizationId: null, parentOrganizationId: 1 },
+      { id: 180001, organizationName: "Jeitto", organizationType: "CREDITOR", linkedToOrganizationId: null, parentOrganizationId: null },
+      { id: 90001, organizationName: "VIVO", organizationType: "CREDITOR", linkedToOrganizationId: null, parentOrganizationId: null },
+      { id: 80001, organizationName: "Sem disparos", organizationType: "CREDITOR", linkedToOrganizationId: null, parentOrganizationId: null },
+      { id: 70001, organizationName: "Credor CDL", organizationType: "CREDITOR", linkedToOrganizationId: 10, parentOrganizationId: 1 },
+      { id: 60001, organizationName: "Credor Distribuidora", organizationType: "CREDITOR", linkedToOrganizationId: 20, parentOrganizationId: 1 },
+    ], [
+      { creditorOrganizationId: 180001, organizationId: 1, sent: 4, delivered: 3, failed: 1, processedMicros: 400_000 },
+      { creditorOrganizationId: 90001, organizationId: 1, sent: 32, delivered: 30, failed: 2, processedMicros: 3_200_000 },
+      { creditorOrganizationId: 90001, organizationId: 90001, sent: 8, delivered: 7, failed: 1, processedMicros: 800_000 },
+      { creditorOrganizationId: 80001, organizationId: 1, sent: 0, delivered: 0, failed: 0, processedMicros: 0 },
+      { creditorOrganizationId: 70001, organizationId: 1, sent: 5, delivered: 5, failed: 0, processedMicros: 500_000 },
+      { creditorOrganizationId: 60001, organizationId: 1, sent: 6, delivered: 6, failed: 0, processedMicros: 600_000 },
+    ]);
+
+    const spcBrasil = groups.find(group => group.organizationId === 1)!;
+    expect(spcBrasil.creditors).toEqual([
+      expect.objectContaining({ creditorOrganizationId: 180001, creditorName: "Jeitto", sent: 4 }),
+      expect.objectContaining({ creditorOrganizationId: 90001, creditorName: "VIVO", sent: 32 }),
+    ]);
+    expect(spcBrasil).toMatchObject({ sent: 36, delivered: 33, failed: 3, processedMicros: 3_600_000 });
+    expect(spcBrasil.creditors).not.toContainEqual(expect.objectContaining({ creditorOrganizationId: 80001 }));
+    expect(groups.find(group => group.organizationId === 10)?.creditors).toContainEqual(expect.objectContaining({ creditorOrganizationId: 70001 }));
+    expect(groups.find(group => group.organizationId === 20)?.creditors).toContainEqual(expect.objectContaining({ creditorOrganizationId: 60001 }));
+  });
 });

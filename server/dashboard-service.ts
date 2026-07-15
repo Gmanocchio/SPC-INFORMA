@@ -19,6 +19,7 @@ type ConsolidationOrganization = {
 };
 type ConsolidationMetric = {
   creditorOrganizationId: number;
+  organizationId?: number;
   sent: number;
   delivered: number;
   failed: number;
@@ -50,7 +51,12 @@ export function buildSpcOrganizationConsolidation(
   sourceOrganizations: ConsolidationOrganization[],
   sourceMetrics: ConsolidationMetric[],
 ): OrganizationConsolidationGroup[] {
-  const metricByCreditorId = new Map(sourceMetrics.map(metric => [metric.creditorOrganizationId, metric]));
+  const metricsByCreditorId = new Map<number, ConsolidationMetric[]>();
+  for (const metric of sourceMetrics) {
+    const creditorMetrics = metricsByCreditorId.get(metric.creditorOrganizationId) ?? [];
+    creditorMetrics.push(metric);
+    metricsByCreditorId.set(metric.creditorOrganizationId, creditorMetrics);
+  }
   const parents = sourceOrganizations.filter((organization): organization is ConsolidationOrganization & { organizationType: ConsolidationParentType } => (
     organization.organizationType !== "CREDITOR"
     && (organization.organizationType !== "SPC_BRASIL" || organization.id === spcOrganizationId)
@@ -60,17 +66,30 @@ export function buildSpcOrganizationConsolidation(
 
   for (const creditor of sourceOrganizations) {
     if (creditor.organizationType !== "CREDITOR") continue;
-    const parentId = creditor.linkedToOrganizationId ?? creditor.parentOrganizationId;
+    const explicitParentId = creditor.linkedToOrganizationId ?? creditor.parentOrganizationId;
+    const creditorMetrics = metricsByCreditorId.get(creditor.id) ?? [];
+    const hasDirectSpcDispatches = creditorMetrics.some(metric => (
+      metric.organizationId === spcOrganizationId && metric.sent > 0
+    ));
+    const parentId = explicitParentId ?? (hasDirectSpcDispatches ? spcOrganizationId : null);
     if (parentId === null || !parentById.has(parentId)) continue;
-    const metric = metricByCreditorId.get(creditor.id);
+    const applicableMetrics = explicitParentId === null
+      ? creditorMetrics.filter(metric => metric.organizationId === spcOrganizationId)
+      : creditorMetrics;
+    const metric = applicableMetrics.reduce((total, item) => ({
+      sent: total.sent + item.sent,
+      delivered: total.delivered + item.delivered,
+      failed: total.failed + item.failed,
+      processedMicros: total.processedMicros + item.processedMicros,
+    }), { sent: 0, delivered: 0, failed: 0, processedMicros: 0 });
     const creditors = creditorsByParentId.get(parentId) ?? [];
     creditors.push({
       creditorOrganizationId: creditor.id,
       creditorName: creditor.organizationName,
-      sent: metric?.sent ?? 0,
-      delivered: metric?.delivered ?? 0,
-      failed: metric?.failed ?? 0,
-      processedMicros: metric?.processedMicros ?? 0,
+      sent: metric.sent,
+      delivered: metric.delivered,
+      failed: metric.failed,
+      processedMicros: metric.processedMicros,
     });
     creditorsByParentId.set(parentId, creditors);
   }
@@ -234,6 +253,21 @@ export async function dashboardOverview(actor: DashboardActor, requestedCreditor
       ),
     ));
     const parentIds = parentOrganizations.map(parent => parent.id);
+    const creditorMetrics = await db.select({
+      creditorOrganizationId: campaigns.creditorOrganizationId,
+      organizationId: campaigns.organizationId,
+      sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
+      delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
+      failed: sql<number>`COALESCE(SUM(${campaigns.failedCount}), 0)`,
+      processedMicros: sql<number>`COALESCE(SUM(${campaigns.totalCostMicros}), 0)`,
+    }).from(campaigns)
+      .where(processedScope)
+      .groupBy(campaigns.creditorOrganizationId, campaigns.organizationId);
+    const directSpcCreditorIds = Array.from(new Set(
+      creditorMetrics
+        .filter(metric => metric.organizationId === actor.organizationId && Number(metric.sent) > 0)
+        .map(metric => metric.creditorOrganizationId),
+    ));
     const creditorOrganizations = await db.select({
       id: organizations.id,
       organizationName: organizations.tradeName,
@@ -247,22 +281,15 @@ export async function dashboardOverview(actor: DashboardActor, requestedCreditor
       or(
         inArray(organizations.linkedToOrganizationId, parentIds),
         and(isNull(organizations.linkedToOrganizationId), inArray(organizations.parentOrganizationId, parentIds)),
+        directSpcCreditorIds.length ? inArray(organizations.id, directSpcCreditorIds) : sql`0 = 1`,
       ),
     ));
-    const creditorMetrics = await db.select({
-      creditorOrganizationId: campaigns.creditorOrganizationId,
-      sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
-      delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
-      failed: sql<number>`COALESCE(SUM(${campaigns.failedCount}), 0)`,
-      processedMicros: sql<number>`COALESCE(SUM(${campaigns.totalCostMicros}), 0)`,
-    }).from(campaigns)
-      .where(processedScope)
-      .groupBy(campaigns.creditorOrganizationId);
     organizationConsolidation = buildSpcOrganizationConsolidation(
       actor.organizationId,
       [...parentOrganizations, ...creditorOrganizations],
       creditorMetrics.map(metric => ({
         creditorOrganizationId: metric.creditorOrganizationId,
+        organizationId: metric.organizationId,
         sent: Number(metric.sent),
         delivered: Number(metric.delivered),
         failed: Number(metric.failed),
