@@ -61,14 +61,7 @@ export default function Dashboard() {
       {data.byCreditor.length ? <MiniBars items={data.byCreditor.map(creditor => ({ label: creditor.creditorName, value: creditor.sent, title: `${creditor.creditorName}: ${integer.format(creditor.sent)} envios` }))} /> : <EmptyChart />}
     </section> : null}
 
-    {canViewOrganizationConsolidation && data.byOrganization.length ? <section data-testid="organization-consolidation" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div><h2 className="font-bold text-[#003B7A]">Consolidado por organização</h2><p className="mt-1 text-sm text-slate-500">Gráficos e tabela de CDLs, Distribuidoras e Credores no escopo SPC Brasil</p></div>
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">{(["CDL", "DISTRIBUTOR", "CREDITOR"] as const).map(type => {
-        const rows = data.byOrganization.filter(item => item.organizationType === type);
-        return <article key={type} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-bold text-slate-800">{organizationTypeLabel[type]}</h3><p className="mt-1 text-xs text-slate-500">Volume confirmado por organização</p>{rows.length ? <MiniBars compact items={rows.slice(0, 8).map(item => ({ label: item.organizationName.slice(0, 10), value: item.sent, title: `${item.organizationName}: ${integer.format(item.sent)} envios` }))} /> : <p className="mt-8 rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">Sem movimentação no período.</p>}</article>;
-      })}</div>
-      <div className="mt-7 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b text-xs uppercase tracking-wide text-slate-500"><th className="px-3 py-3">Organização</th><th className="px-3 py-3">Tipo</th><th className="px-3 py-3 text-right">Envios</th><th className="px-3 py-3 text-right">Entregues</th><th className="px-3 py-3 text-right">Valor</th></tr></thead><tbody>{data.byOrganization.map(item => <tr key={item.organizationId} className="border-b border-slate-100 last:border-0"><td className="px-3 py-4 font-semibold text-slate-800">{item.organizationName}</td><td className="px-3 py-4"><Badge variant="outline">{organizationTypeLabel[item.organizationType] ?? item.organizationType}</Badge></td><td className="px-3 py-4 text-right">{integer.format(item.sent)}</td><td className="px-3 py-4 text-right">{integer.format(item.delivered)}</td><td className="px-3 py-4 text-right font-semibold">{currency(item.processedMicros)}</td></tr>)}</tbody></table></div>
-    </section> : null}
+    {canViewOrganizationConsolidation && data.organizationConsolidation.length ? <OrganizationConsolidation groups={data.organizationConsolidation} /> : null}
   </div>;
 }
 
@@ -76,7 +69,44 @@ function EmptyChart() {
   return <div className="mt-8 flex min-h-52 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-[#F8FAFC]"><div className="max-w-xs text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-[#0066CC]"><BarChart3 /></span><p className="mt-4 font-semibold text-slate-700">Aguardando movimentação</p><p className="mt-2 text-sm leading-6 text-slate-500">Os indicadores serão preenchidos automaticamente a partir das campanhas e retornos dos brokers.</p></div></div>;
 }
 
+type ConsolidationGroup = {
+  organizationId: number;
+  organizationName: string;
+  organizationType: "SPC_BRASIL" | "CDL" | "DISTRIBUTOR";
+  sent: number;
+  delivered: number;
+  failed: number;
+  processedMicros: number;
+  creditors: Array<{
+    creditorOrganizationId: number;
+    creditorName: string;
+    sent: number;
+    delivered: number;
+    failed: number;
+    processedMicros: number;
+  }>;
+};
+
+function OrganizationConsolidation({ groups }: { groups: ConsolidationGroup[] }) {
+  const groupTypes = ["CDL", "DISTRIBUTOR", "SPC_BRASIL"] as const;
+  return <section data-testid="organization-consolidation" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div><h2 className="font-bold text-[#003B7A]">Consolidado por organização</h2><p className="mt-1 text-sm text-slate-500">Credores agrupados conforme o vínculo com CDLs, Distribuidoras e SPC Brasil</p></div>
+    <div className="mt-6 grid gap-4 xl:grid-cols-3">{groupTypes.map(type => {
+      const organizationGroups = groups.filter(group => group.organizationType === type);
+      return <article data-testid={`organization-type-${type}`} key={type} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-800">{organizationTypeLabel[type]}</h3><p className="mt-1 text-xs text-slate-500">Uma coluna para cada credor vinculado</p></div><Badge variant="outline" className="shrink-0 bg-white">{organizationGroups.length}</Badge></div>
+        <div className="mt-4 space-y-4">{organizationGroups.length ? organizationGroups.map(group => <div data-testid={`organization-group-${group.organizationId}`} key={group.organizationId} className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-800" title={group.organizationName}>{group.organizationName}</p><p className="mt-0.5 text-[11px] text-slate-500">{group.creditors.length} {group.creditors.length === 1 ? "credor vinculado" : "credores vinculados"}</p></div><span className="shrink-0 text-xs font-semibold text-[#0066CC]">{integer.format(group.sent)} envios</span></div>
+          {group.creditors.length ? <MiniBars compact items={group.creditors.map(creditor => ({ label: creditor.creditorName, value: creditor.sent, title: `${creditor.creditorName}: ${integer.format(creditor.sent)} envios` }))} /> : <p className="mt-4 rounded-lg border border-dashed p-4 text-center text-xs text-slate-500">Nenhum credor vinculado.</p>}
+          <div className="sr-only">{group.creditors.map(creditor => <span data-testid={`creditor-column-${creditor.creditorOrganizationId}`} key={creditor.creditorOrganizationId}>{creditor.creditorName}</span>)}</div>
+        </div>) : <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">Nenhuma organização ativa neste grupo.</p>}</div>
+      </article>;
+    })}</div>
+    <div className="mt-7 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b text-xs uppercase tracking-wide text-slate-500"><th className="px-3 py-3">Grupo</th><th className="px-3 py-3">Organização vinculadora</th><th className="px-3 py-3">Credor</th><th className="px-3 py-3 text-right">Envios</th><th className="px-3 py-3 text-right">Entregues</th><th className="px-3 py-3 text-right">Falhas</th><th className="px-3 py-3 text-right">Valor</th></tr></thead><tbody>{groups.flatMap(group => group.creditors.length ? group.creditors.map((creditor, creditorIndex) => <tr data-testid={`creditor-detail-${creditor.creditorOrganizationId}`} key={`${group.organizationId}-${creditor.creditorOrganizationId}`} className={`${creditorIndex === 0 ? "border-t-2 border-slate-200" : "border-t border-slate-100"}`}><td className="px-3 py-4"><Badge variant="outline">{organizationTypeLabel[group.organizationType]}</Badge></td><td className="px-3 py-4 font-semibold text-slate-800">{group.organizationName}</td><td className="px-3 py-4 text-slate-700">{creditor.creditorName}</td><td className="px-3 py-4 text-right">{integer.format(creditor.sent)}</td><td className="px-3 py-4 text-right">{integer.format(creditor.delivered)}</td><td className="px-3 py-4 text-right">{integer.format(creditor.failed)}</td><td className="px-3 py-4 text-right font-semibold">{currency(creditor.processedMicros)}</td></tr>) : [<tr key={`${group.organizationId}-empty`} className="border-t-2 border-slate-200"><td className="px-3 py-4"><Badge variant="outline">{organizationTypeLabel[group.organizationType]}</Badge></td><td className="px-3 py-4 font-semibold text-slate-800">{group.organizationName}</td><td className="px-3 py-4 text-slate-400" colSpan={5}>Nenhum credor vinculado.</td></tr>])}</tbody></table></div>
+  </section>;
+}
+
 function MiniBars({ items, compact = false }: { items: Array<{ label: string; value: number; title: string }>; compact?: boolean }) {
   const maximum = Math.max(1, ...items.map(item => item.value));
-  return <div className={`flex items-end gap-2 overflow-x-auto pb-1 ${compact ? "mt-5 h-36" : "mt-7 h-52"}`} role="img" aria-label="Gráfico de volume de envios por período ou organização">{items.map(item => <div key={`${item.label}-${item.title}`} className="flex min-w-8 flex-1 flex-col items-center justify-end gap-2"><span className="text-[10px] font-semibold text-slate-500">{integer.format(item.value)}</span><div className="w-full min-w-5 rounded-t-md bg-gradient-to-t from-[#0066CC] to-[#4DA3FF]" style={{ height: `${Math.max(6, item.value / maximum * (compact ? 85 : 150))}px` }} title={item.title} /><span className="max-w-16 truncate text-[10px] text-slate-500" title={item.title}>{item.label}</span></div>)}</div>;
+  return <div className={`flex items-end gap-2 overflow-x-auto pb-1 ${compact ? "mt-5 h-36" : "mt-7 h-52"}`} role="img" aria-label="Gráfico de volume de envios por período, organização ou credor">{items.map(item => <div key={`${item.label}-${item.title}`} className={`flex flex-1 flex-col items-center justify-end gap-2 ${compact ? "min-w-20" : "min-w-8"}`}><span className="text-[10px] font-semibold text-slate-500">{integer.format(item.value)}</span><div className="w-full min-w-5 rounded-t-md bg-gradient-to-t from-[#0066CC] to-[#4DA3FF]" style={{ height: `${Math.max(6, item.value / maximum * (compact ? 85 : 150))}px` }} title={item.title} /><span className={`${compact ? "max-w-20" : "max-w-16"} truncate text-[10px] text-slate-500`} title={item.title}>{item.label}</span></div>)}</div>;
 }

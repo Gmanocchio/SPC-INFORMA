@@ -69,10 +69,20 @@ describe("contratos administrativos visíveis", () => {
     expect(app).toContain("gestão futura de domínios");
   });
 
-  it("mantém gráficos separados para CDL, Distribuidora e Credor", () => {
+  it("mantém credores separados dentro dos combos de CDL, Distribuidora e SPC Brasil", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
-    expect(dashboard).toContain('["CDL", "DISTRIBUTOR", "CREDITOR"]');
-    expect(dashboard).toContain("Volume confirmado por organização");
+    expect(dashboard).toContain('["CDL", "DISTRIBUTOR", "SPC_BRASIL"]');
+    expect(dashboard).toContain("Uma coluna para cada credor vinculado");
     expect(dashboard).toContain("Consolidado por organização");
+    expect(dashboard).toContain("data.organizationConsolidation");
+    expect(dashboard).toContain("organization-group-");
+    expect(dashboard).toContain("creditor-column-");
+    expect(dashboard).toContain("xl:grid-cols-3");
+    expect(dashboard).toContain("overflow-x-auto");
+
+    const service = source("server/dashboard-service.ts");
+    expect(service).toContain('actor.role === "SPC_ADMIN" && organization.type === "SPC_BRASIL"');
+    expect(service).toContain("campaigns.creditorOrganizationId");
+    expect(service).toContain("organizations.linkedToOrganizationId");
   });
 });

@@ -184,3 +184,11 @@
 - [x] Preservar somente identificadores técnicos internos cuja renomeação possa quebrar compatibilidade, garantindo que não fiquem visíveis ao usuário (cookie de sessão, domínio criptográfico e nome interno do pacote)
 - [x] Adicionar regressões contra ocorrências residuais da marca anterior e validar fluxos de e-mail
 - [x] Validar TypeScript, suíte Vitest, build e interface responsiva antes de salvar nova versão (TypeScript sem erros, 155 testes aprovados, 1 ignorado, build concluído, telas desktop e móvel verificadas sem erros atuais de execução)
+- [x] Auditar o contrato atual do consolidado por organização exclusivo do SPC_ADMIN e mapear os vínculos de credores por linkedToOrganizationId (a implementação agrupava campanhas por organizationId; o novo modelo deve agrupar por creditorOrganizationId e pelo vínculo do credor com a organização-pai)
+- [x] Agrupar credores diretamente vinculados ao SPC Brasil no combo SPC Brasil, com uma coluna e métricas separadas para cada credor
+- [x] Agrupar, dentro de cada CDL, todos os credores vinculados àquela CDL, com uma coluna e métricas separadas para cada credor
+- [x] Agrupar, dentro de cada Distribuidora, todos os credores vinculados àquela Distribuidora, com uma coluna e métricas separadas para cada credor
+- [x] Alinhar a tabela detalhada do consolidado à hierarquia organização-pai e credores, sem duplicidade ou mistura entre grupos
+- [x] Preservar o consolidado hierárquico exclusivamente para SPC_ADMIN da organização SPC Brasil e manter os demais dashboards inalterados
+- [x] Adicionar regressões de backend e interface para escopo, vínculos, totais por credor, grupos vazios e responsividade (14 verificações direcionadas aprovadas)
+- [x] Validar TypeScript, suíte Vitest, build e interface do consolidado hierárquico antes de salvar nova versão (TypeScript sem erros, 158 testes aprovados, 1 ignorado, build concluído, contratos desktop/móvel cobertos e sem erros atuais de execução)

@@ -34,6 +34,45 @@ const overviewData = {
       processedMicros: 1_300_000,
     },
   ],
+  organizationConsolidation: [
+    {
+      organizationId: 2,
+      organizationName: "CDL Curitiba",
+      organizationType: "CDL",
+      sent: 7,
+      delivered: 6,
+      failed: 1,
+      processedMicros: 700_000,
+      creditors: [
+        { creditorOrganizationId: 21, creditorName: "Credor CDL Alfa", sent: 4, delivered: 4, failed: 0, processedMicros: 400_000 },
+        { creditorOrganizationId: 22, creditorName: "Credor CDL Beta", sent: 3, delivered: 2, failed: 1, processedMicros: 300_000 },
+      ],
+    },
+    {
+      organizationId: 3,
+      organizationName: "Distribuidora Sul",
+      organizationType: "DISTRIBUTOR",
+      sent: 2,
+      delivered: 1,
+      failed: 1,
+      processedMicros: 200_000,
+      creditors: [
+        { creditorOrganizationId: 31, creditorName: "Credor Distribuidora", sent: 2, delivered: 1, failed: 1, processedMicros: 200_000 },
+      ],
+    },
+    {
+      organizationId: 1,
+      organizationName: "SPC Brasil",
+      organizationType: "SPC_BRASIL",
+      sent: 1,
+      delivered: 1,
+      failed: 0,
+      processedMicros: 100_000,
+      creditors: [
+        { creditorOrganizationId: 11, creditorName: "Credor SPC", sent: 1, delivered: 1, failed: 0, processedMicros: 100_000 },
+      ],
+    },
+  ],
 };
 
 vi.mock("@/_core/hooks/useAuth", () => ({
@@ -110,5 +149,12 @@ describe("Dashboard por tipo de organização", () => {
 
     expect(screen.getByTestId("organization-consolidation")).toBeTruthy();
     expect(screen.getByText("Consolidado por organização")).toBeTruthy();
+    expect(screen.getByTestId("organization-type-CDL")).toBeTruthy();
+    expect(screen.getByTestId("organization-type-DISTRIBUTOR")).toBeTruthy();
+    expect(screen.getByTestId("organization-type-SPC_BRASIL")).toBeTruthy();
+    expect(screen.getByTestId("creditor-column-21").textContent).toBe("Credor CDL Alfa");
+    expect(screen.getByTestId("creditor-column-22").textContent).toBe("Credor CDL Beta");
+    expect(screen.getByTestId("creditor-column-31").textContent).toBe("Credor Distribuidora");
+    expect(screen.getByTestId("creditor-column-11").textContent).toBe("Credor SPC");
   });
 });
