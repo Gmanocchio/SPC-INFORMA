@@ -289,55 +289,16 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || "", // Name is required
-          email: userInfo.email ?? "", // Email is required
-          organizationId: -1, // Placeholder, should be set correctly later
-          cpf: "00000000000", // Placeholder
-          passwordHash: "", // Placeholder, not used for OAuth login
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? "oauth",
-          lastSignedIn: signedInAt,
-          role: "REQUESTER", // Default role
-          status: "ACTIVE", // Default status
-          mustChangePassword: false,
-          failedLoginAttempts: 0,
-          lockedUntil: null,
-          passwordChangedAt: null,
-          createdByUserId: null,
-          deletedAt: null,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
-    }
-
     if (!user) {
       throw ForbiddenError("User not found");
     }
 
+    if (!user.openId) {
+      throw ForbiddenError("OAuth identifier not available for this user");
+    }
+
     await db.upsertUser({
       openId: user.openId,
-      name: user.name,
-      email: user.email,
-      organizationId: user.organizationId,
-      cpf: user.cpf,
-      passwordHash: user.passwordHash,
-      loginMethod: user.loginMethod,
-      role: user.role,
-      status: user.status,
-      mustChangePassword: user.mustChangePassword,
-      failedLoginAttempts: user.failedLoginAttempts,
-      lockedUntil: user.lockedUntil,
-      passwordChangedAt: user.passwordChangedAt,
-      createdByUserId: user.createdByUserId,
-      deletedAt: user.deletedAt,
       lastSignedIn: signedInAt,
     });
 
@@ -359,16 +320,16 @@ function buildCronUser(
   const now = new Date();
   return {
     id: -1,
-    organizationId: -1, // Placeholder for cron user
+    organizationId: -1,
     openId: userInfo.openId,
     name: userInfo.name || "Manus Scheduled Task",
-    cpf: "00000000000", // Placeholder for cron user
-    email: "cron@example.com", // Placeholder for cron user
+    cpf: "00000000000",
+    email: "scheduled-task@internal.invalid",
     phone: null,
-    passwordHash: "", // Placeholder for cron user
-    loginMethod: "cron", // Placeholder for cron user
-    role: "REQUESTER",
-    status: "ACTIVE", // Placeholder for cron user
+    passwordHash: "disabled",
+    loginMethod: "scheduled-task",
+    role: "SPC_ADMIN",
+    status: "ACTIVE",
     mustChangePassword: false,
     failedLoginAttempts: 0,
     lockedUntil: null,
@@ -380,7 +341,7 @@ function buildCronUser(
     deletedAt: null,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
-  } as AuthenticatedUser;
+  };
 }
 
 export const sdk = new SDKServer();

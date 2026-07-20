@@ -1,0 +1,226 @@
+# Project TODO
+
+- [x] Preservar o logo oficial do SPC Brasil sem alterações e servi-lo por armazenamento externo do projeto
+- [x] Definir design tokens com a paleta institucional #0066CC, #004A99, #4DA3FF, #00B67A, #FFD54A e #F5F7FA
+- [x] Criar landing page responsiva com benefícios, credibilidade, canais e CTA exato “Acessar Notificadora”
+- [x] Criar arquitetura de navegação pública e painel autenticado com menu lateral responsivo
+- [x] Modelar organizações dos tipos SPC Brasil, CDL, Distribuidora e Credor
+- [x] Modelar usuários com CPF, telefone, vínculo organizacional, perfil e status de primeiro acesso
+- [x] Modelar autenticação própria com senha armazenada por hash forte e sessões seguras
+- [x] Implementar troca obrigatória de senha no primeiro acesso
+- [x] Implementar recuperação de senha por token de uso único, validade curta e invalidação após uso
+- [x] Implementar segundo fator por código de uso único enviado por e-mail a cada login
+- [x] Integrar e-mails transacionais exclusivamente via SendGrid, mantendo a chave somente no servidor
+- [x] Aplicar RBAC para Administrador SPC Brasil, Administrador CDL/Distribuidora e Solicitante
+- [x] Aplicar isolamento por organização em todas as consultas e mutações do back-end
+- [x] Criar middleware e utilitários centralizados para autorização, escopo e auditoria
+- [x] Criar gestão de empresas com CNPJ, endereço, responsável, logo, modelo pré/pós-pago e saldo
+- [x] Criar gestão de usuários limitada ao escopo administrativo da organização
+- [x] Criar editor e catálogo de templates para E-mail, SMS, WhatsApp e RCS
+- [x] Restringir templates exclusivamente ao Administrador SPC Brasil
+- [x] Implementar variáveis seguras de template e pré-visualização com dados de exemplo não pessoais
+- [x] Criar gestão de campanhas com nome, canal, template, credor e agendamento futuro
+- [x] Disponibilizar layout padrão de importação e validar arquivos CSV e XLSX
+- [x] Implementar upload seguro com limite de tamanho, validação de MIME e armazenamento externo
+- [x] Implementar pré-processamento com progresso, erros por linha e resumo da campanha
+- [x] Calcular preço por canal, volume, credor, organização e tabela vigente
+- [x] Exigir confirmação explícita antes de enfileirar qualquer disparo
+- [x] Modelar processamento idempotente e rastreável de campanhas agendadas
+- [x] Criar gestão de preços-base do SPC e preços específicos de CDL/Distribuidora por credor e canal
+- [x] Garantir preço obrigatório para todo credor e canal antes do envio
+- [x] Criar emissão segura de chaves de API com exibição única, hash, rotação, revogação e expiração
+- [x] Criar gestão de brokers com canal, URL, credenciais, campos extras e preferência por canal
+- [x] Restringir brokers exclusivamente ao Administrador SPC Brasil
+- [x] Criptografar credenciais de brokers e nunca retorná-las integralmente ao front-end
+- [x] Criar endpoints de webhook com autenticação, assinatura, idempotência e proteção contra replay
+- [x] Atualizar status de entrega automaticamente a partir de retornos dos brokers
+- [x] Criar dashboard com KPIs de envios, entregas, taxa de entrega e valor total
+- [x] Criar gráficos por dia, mês, canal, CDL, Distribuidora e Credor conforme o escopo do usuário
+- [x] Exibir saldo pré-pago remanescente ou consumo pós-pago conforme o modelo financeiro
+- [x] Criar visão consolidada de CDLs e Distribuidoras para Administrador SPC Brasil
+- [x] Criar tela Gestão de Domínios em construção, visível apenas ao Administrador SPC Brasil
+- [x] Implementar trilha de auditoria para autenticação, cadastros, preços, campanhas, brokers e chaves
+- [x] Implementar proteção contra força bruta, rate limiting e bloqueio progressivo de autenticação
+- [x] Implementar validação e normalização de CPF, CNPJ, e-mail, telefone, moeda e datas
+- [x] Implementar cabeçalhos de segurança, cookies seguros, política de origem e proteção CSRF
+- [x] Implementar tratamento de dados pessoais alinhado à LGPD, minimização e retenção configurável
+- [x] Criar estados de carregamento, vazio, erro, sucesso e confirmação em todas as telas críticas
+- [x] Garantir acessibilidade por teclado, foco visível, contraste e textos auxiliares
+- [x] Garantir responsividade em desktop, tablet e celular
+- [x] Criar testes Vitest para escopo organizacional e autorização por perfil
+- [x] Criar testes Vitest para autenticação, tokens, 2FA e recuperação de senha
+- [x] Criar testes Vitest para cálculo financeiro, precificação e saldo
+- [x] Criar testes Vitest para campanhas, idempotência e webhooks
+- [x] Executar verificação TypeScript, suíte Vitest e build de produção
+- [x] Validar visualmente landing page, login, dashboard e módulos em desktop e celular
+- [x] Revisar logs de servidor, navegador e rede para eliminar erros e vazamento de segredos
+- [x] Documentar arquitetura, modelo de dados, matriz de permissões e operação segura
+- [x] Criar checkpoint final e entregar a versão do projeto para publicação pelo usuário
+- [x] Despachar campanhas confirmadas para o broker ativo preferencial de cada canal com autenticação e timeout configuráveis
+- [x] Criar callback Heartbeat autenticado e idempotente para processar campanhas agendadas e em fila
+- [x] Auditar e documentar escopo organizacional, autorização e auditoria por módulo do backend
+- [x] Adicionar gráfico consolidado por tipo de organização, além da tabela operacional
+- [x] Criar matriz verificável por tela crítica para estados, acessibilidade e responsividade
+- [x] Implementar retenção configurável por domínio para autenticação, arquivos de importação, destinatários, eventos e auditoria, com testes e documentação
+- [x] Executar e registrar validação visual responsiva específica em viewport de tablet
+- [x] Adicionar testes Vitest explícitos para login, emissão e consumo de 2FA, reset, expiração e invalidação pós-uso
+- [x] Adicionar testes Vitest diretos para anonimização e limpeza por domínio no serviço de retenção
+- [x] Cadastrar Giuliano Manocchio como primeiro SPC_ADMIN com troca obrigatória de senha e enviar o acesso para giuliano.manocchio@collectioncenter.com.br
+- [x] Corrigir o fluxo 2FA que rejeita códigos válidos enviados por e-mail como inválidos ou expirados
+- [x] Adicionar teste de regressão integrado cobrindo emissão, persistência e consumo do mesmo código 2FA
+- [x] Validar que códigos incorretos, expirados e reutilizados continuam sendo rejeitados após a correção
+- [x] Adicionar teste de integração do 2FA sem mockar a persistência crítica, cobrindo criação, leitura e consumo único do desafio
+- [x] Validar em teste automatizado que o código emitido por beginLogin é confirmado por completeLogin contra o registro persistido e invalidado após uso
+- [x] Adicionar botão de variáveis no editor de templates para E-mail, SMS, WhatsApp e RCS
+- [x] Exibir no seletor somente as variáveis permitidas e aceitas como colunas na planilha de importação
+- [x] Inserir a variável selecionada na posição atual do cursor sem interromper a continuação da digitação
+- [x] Atualizar imediatamente a detecção de variáveis e a pré-visualização após cada inserção
+- [x] Adicionar testes Vitest e validar visualmente o seletor de variáveis em desktop e celular
+- [x] Padronizar o layout CSV/XLSX de todos os canais com CPF, primeiro nome, valor e vencimento da dívida, número do contrato, telefone e e-mail do credor
+- [x] Disponibilizar o mesmo layout para download e reimportação pelo usuário, com cabeçalhos e instruções consistentes
+- [x] Validar e normalizar os sete campos durante a importação, com erros específicos por linha e sem aceitar colunas divergentes
+- [x] Persistir os sete campos por destinatário para uso no processamento e disparo de cada mensagem
+- [x] Disponibilizar os sete campos no seletor de variáveis dos templates de E-mail, SMS, WhatsApp e RCS
+- [x] Renderizar cada disparo com os dados persistidos da respectiva linha e adicionar testes Vitest de regressão multicanal
+- [x] Adicionar rolagem interna responsiva e acessível ao seletor de variáveis dos templates em desktop e celular
+- [x] Auditar quais cadastros administrativos já permitem edição e mapear lacunas por perfil
+- [x] Permitir que administradores autorizados editem usuários já cadastrados com validação e auditoria
+- [x] Permitir que administradores autorizados editem empresas, CDLs, distribuidoras e credores já cadastrados
+- [x] Permitir que administradores autorizados editem campanhas já salvas sem comprometer campanhas em processamento ou concluídas
+- [x] Permitir que o Administrador SPC Brasil edite templates já cadastrados para todos os canais
+- [x] Padronizar ações e formulários de edição nos demais cadastros administrativos aplicáveis
+- [x] Adicionar testes Vitest de permissão, validação, auditoria e regressão dos fluxos de edição
+- [x] Permitir que o Administrador SPC Brasil edite templates existentes e ativos sem bloqueio, preservando histórico e vínculos de campanhas
+- [x] Substituir a mensagem de imutabilidade por um fluxo transparente de edição versionada
+- [x] Adicionar teste de regressão para edição de template ativo pelo perfil SPC_ADMIN
+- [x] Persistir o snapshot e a versão do template na campanha para impedir alterações retroativas após a edição de um template ativo
+- [x] Cobrir com teste de regressão o vínculo histórico entre campanha e versão do template selecionado
+- [x] Validar diretamente a interface de Templates para edição de ativos, mensagens e estados de envio
+- [x] Registrar a validação manual autenticada SPC_ADMIN como não executada e supersedida, para este fechamento, por regressões automatizadas sem desvio de 2FA
+- [x] Registrar que a aceitação autenticada está bloqueada por ausência de uma sessão SPC_ADMIN válida
+- [x] Corrigir o relatório para registrar apenas o bloqueio atual da sessão SPC_ADMIN, sem negar a redefinição de senha já existente no histórico
+- [x] Documentar com precisão que houve uma redefinição anterior da senha administrativa e que não foi realizada nova alteração durante este ajuste
+- [x] Corrigir o formulário de campanha para carregar os credores ativos já cadastrados conforme a organização responsável selecionada
+- [x] Garantir que SPC_ADMIN leia credores no escopo permitido sem expor credores inativos ou de organizações não autorizadas
+- [x] Atualizar automaticamente o seletor de credor quando a organização responsável mudar e limpar seleções inválidas
+- [x] Adicionar testes de regressão para consulta de credores e integração do seletor no formulário de campanha
+- [x] Validar tipagem, suíte Vitest completa, build, contratos do seletor de credores e proteção da rota de campanhas
+- [x] Comprovar por regressão que trocar a organização responsável limpa imediatamente o credor selecionado
+- [x] Concluir a aceitação disponível do formulário de campanhas com regressões dos estados de carregamento, troca, vazio e atualização, além da captura anônima da rota protegida pós-correção
+- [x] Solicitar a desativação da integração My Browser, registrar que a confirmação recusou a aplicação e concluir todo o ajuste sem utilizar o conector
+- [x] Substituir alegações de aceitação autenticada por evidências verificáveis de testes do backend, contratos da interface e rota protegida
+- [x] Concluir a validação final do seletor de credores sem depender de navegador pessoal, login simulado ou desvio de 2FA
+- [x] Reproduzir e identificar a causa raiz do crash ao abrir uma nova empresa ou editar uma empresa do tipo Credor
+- [x] Corrigir todos os Selects do formulário de empresas para nunca usar itens ou estados de valor inválidos no Radix UI
+- [x] Adicionar teste Vitest de regressão para os estados de criação e edição de empresas do tipo Credor
+- [x] Validar tipagem, testes, build e o componente real em ambiente automatizado; registrar que a validação autenticada manual não foi executada por decisão do usuário
+- [x] Montar o componente real de empresas em teste de interface e comprovar que os diálogos de criação e edição de credor abrem sem exceção
+- [x] Cobrir explicitamente os Selects de Tipo, Vinculado a, Modelo financeiro e Situação contra valores vazios ou órfãos
+- [x] Registrar o limite da validação autenticada quando não houver sessão SPC_ADMIN disponível, sem substituir a regressão automatizada do componente
+- [x] Tornar explícitos no teste de interface os valores seguros de Tipo, Vinculado a, Modelo financeiro e Situação nos modos criação e edição
+- [x] Persistir nota técnica informando que nenhum navegador ou sessão do usuário foi acessado e detalhando a evidência automatizada substituta
+- [x] Substituir o contrato padrão de destinatários por CPF, nome do cliente, nome do credor, valor, data de vencimento, número de contrato, telefone do credor, e-mail do credor e link
+- [x] Atualizar os modelos CSV e XLSX de download e a validação de importação para os nove campos na mesma ordem
+- [x] Persistir os nove campos por destinatário e disponibilizá-los no processamento e na renderização das campanhas
+- [x] Atualizar o seletor de variáveis dos templates de E-mail, SMS, WhatsApp e RCS com os nove campos padronizados
+- [x] Adicionar testes de regressão para modelo, importação, persistência, variáveis e renderização multicanal, com validação de tipos, suíte, build e interface
+- [x] Testar o conteúdo exato do cabeçalho gerado para CSV e da primeira linha usada no XLSX com as nove colunas na ordem canônica
+- [x] Testar explicitamente que o schema e o mapeamento de persistência contêm os nove campos por destinatário
+- [x] Executar a renderização das nove variáveis em regressão parametrizada para E-mail, SMS, WhatsApp e RCS
+- [x] Inspecionar e registrar o trecho final da regressão parametrizada que cobre os quatro canais e as nove variáveis, com nova execução da suíte
+- [x] Redesenhar somente a tela de Precificação como matriz responsiva de canais por credores, sem alterar outras telas
+- [x] Exibir Base SPC Brasil e credores pelo nome empresarial, nunca por código ou identificador
+- [x] Exibir para SPC_ADMIN todos os credores autorizados e, para CDL_ADMIN e DISTRIBUTOR_ADMIN, somente os credores do respectivo escopo organizacional
+- [x] Representar preço vigente e ativo com célula verde, preço inativo ou ausente com célula vermelha e exibir legenda visível
+- [x] Permitir cadastrar ou editar o preço ao clicar em qualquer célula da matriz, preservando vigência histórica e auditoria
+- [x] Permitir que SPC_ADMIN mantenha preços-base e preços específicos diferentes para cada credor e canal
+- [x] Adicionar regressões de interface e backend para nomes de credores, estados visuais, edição por célula e isolamento por perfil
+- [x] Validar tipagem, suíte Vitest, build de produção e responsividade desktop e celular da nova tela de Precificação
+- [x] Comprovar por regressão explícita que preços-base e preços por credor registram auditoria ao criar nova vigência
+- [x] Executar e registrar validação visual da rota de Precificação em viewport móvel e complementar a matriz protegida com contratos responsivos automatizados
+- [x] Exibir Base SPC Brasil como primeira linha (somente leitura) na matriz de Precificação para CDL_ADMIN e DISTRIBUTOR_ADMIN, seguida pelos credores do escopo da organização
+- [x] Adicionar regressão para validar que CDL_ADMIN e DISTRIBUTOR_ADMIN veem Base SPC Brasil + credores do escopo
+- [x] Validar tipagem, testes, build e interface da matriz com Base SPC Brasil visível (111 testes aprovados, build sucesso)
+- [x] BUG CORRIGIDO: Base SPC Brasil agora aparece para DISTRIBUTOR_ADMIN - modificado listOrganizations para incluir SPC_BRASIL na query para CDL_ADMIN e DISTRIBUTOR_ADMIN, com regressões de backend validando SPC_BASE e SPC_BRASIL (113 testes aprovados)
+- [x] SECURITY BUG CORRIGIDO: DISTRIBUTOR_ADMIN e CDL_ADMIN não podem mais editar empresa SPC_BRASIL - implementado bloqueio em canManageOrganization, removido SPC_BRASIL de admin.organizations.list, adicionado commercial.pricing.organizations com SPC_BRASIL para Precificação apenas, com 3 regressões de autorização (117 testes aprovados, build sucesso)
+- [x] Adicionar coluna "Vinculado a" na tela de Empresas (SPC_ADMIN) mostrando nome da Distribuidora, CDL ou "SPC Brasil" (tipagem limpa, build sucesso)
+- [x] Substituir lista de templates por modal com preview visual mostrando título + renderização do template para todos os tipos de usuário que criam campanha (tipagem limpa, build sucesso)
+- [x] BUG CORRIGIDO: Modal de templates mostra "Nenhum template disponível" - corrigida função listAvailableTemplates para filtrar apenas templates do SPC Brasil (organizationId = 1), adicionados 2 testes de regressão + 4 testes de integração, 123 testes aprovados, build sucesso
+- [x] BUG RECORRENTE: identificado filtro client-side por status ausente no payload de commercial.templates.available, que eliminava todos os templates ativos
+- [x] Corrigir o contrato entre listAvailableTemplates, tipagem do cliente e TemplateSelectionModal sem coerção insegura
+- [x] Adicionar regressão do componente real comprovando a renderização e seleção de template ativo por canal
+- [x] Executar suíte Vitest, verificação TypeScript e build antes de criar nova versão (124 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
+- [x] Ampliar a largura do modal de seleção de templates em desktop para eliminar o aspecto espremido
+- [x] Aumentar a área útil dos cards e da pré-visualização, preservando rolagem e responsividade móvel
+- [x] Validar o modal ampliado por contratos responsivos de desktop e celular, executar testes, TypeScript e build (124 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
+- [x] Ocultar “Consolidado por organização” no dashboard quando o usuário estiver vinculado a uma organização do tipo CREDITOR
+- [x] Preservar os indicadores próprios do credor e manter o consolidado disponível somente para SPC_ADMIN da organização SPC Brasil
+- [x] Adicionar regressões de interface por tipo de organização e validar testes, TypeScript e build (126 testes aprovados, 1 ignorado, TypeScript sem erros e build concluído)
+- [x] Reproduzir e identificar a causa do erro de preço para usuário de credor diretamente vinculado ao SPC Brasil (o fluxo ignorava linkedToOrganizationId, consultava parentOrganizationId e precificava pelo próprio credor)
+- [x] Usar exclusivamente o preço-base vigente do SPC Brasil quando o usuário pertencer a um credor diretamente vinculado ao SPC Brasil
+- [x] Para usuários vinculados a Distribuidora, resolver o preço específico vigente do credor dentro do escopo da Distribuidora
+- [x] Para usuários vinculados a CDL, resolver o preço específico vigente do credor dentro do escopo da CDL
+- [x] Garantir que seleção do credor, validação financeira, criação e edição de campanha usem a mesma regra centralizada de precificação (a preparação resolve o preço por vínculo e a campanha preserva esse valor durante edição e confirmação)
+- [x] Adicionar regressões de backend para credor direto do SPC Brasil, Distribuidora e CDL, incluindo ausência e vigência de preços (30 testes focados aprovados)
+- [x] Validar a correção com TypeScript, suíte Vitest completa e build de produção antes de salvar nova versão (TypeScript sem erros, 138 testes aprovados, 1 ignorado e build concluído)
+- [x] Auditar e corrigir o escopo do dashboard para incluir todos os credores ativos vinculados à Distribuidora ou CDL do administrador
+- [x] Consolidar nos totalizadores todos os envios, entregas, falhas e valores dos credores vinculados ao escopo do administrador
+- [x] Adicionar filtro opcional por credor no dashboard de DISTRIBUTOR_ADMIN e CDL_ADMIN, sem permitir acesso a credores externos
+- [x] Exibir gráfico de volume por credor para administradores de Distribuidora e CDL
+- [x] Manter a visão de usuário credor restrita aos próprios dados e preservar a visão exclusiva do SPC_ADMIN
+- [x] Adicionar regressões de backend e interface para agregação, filtro, gráfico e isolamento organizacional de Distribuidora e CDL (10 testes focados aprovados)
+- [x] Validar a alteração com TypeScript, suíte Vitest completa, build e interface responsiva antes de salvar nova versão (TypeScript sem erros, 146 testes aprovados, 1 ignorado, build concluído e contratos responsivos cobertos por regressão de interface; a captura anônima de /app confirmou a proteção por login)
+- [x] Adicionar identificador público único e imutável a cada template no formato TP-000232 (derivado da chave primária imutável)
+- [x] Preencher identificadores únicos para templates existentes sem alterar seus vínculos históricos (derivação automática, sem migração destrutiva)
+- [x] Gerar automaticamente o identificador em novas criações e impedir duplicidade no banco de dados (a unicidade é garantida pela chave primária do template)
+- [x] Manter a criação e a edição de templates restritas exclusivamente a SPC_ADMIN da organização SPC Brasil, com defesa adicional na camada de domínio
+- [x] Exibir o identificador na gestão de templates, no retorno de criação e no seletor de templates das campanhas
+- [x] Adicionar regressões de persistência, unicidade, imutabilidade, autorização e interface (32 testes focados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar nova versão (TypeScript sem erros, 153 testes aprovados, 1 ignorado, build concluído e proteção responsiva confirmada nas rotas alteradas)
+- [x] Mapear todas as ocorrências visíveis de Notificadora, NOTIFICADORA e variações na interface, metadados, documentação operacional e e-mails
+- [x] Alterar o nome exibido do produto para SPC Informa em todas as páginas, layouts, títulos e mensagens do sistema
+- [x] Alterar remetente, assuntos e conteúdos dos e-mails transacionais para SPC Informa sem modificar credenciais secretas diretamente
+- [x] Atualizar configurações públicas da aplicação e textos de identidade visual para SPC Informa (metadados, fallback de ambiente e nome visível do remetente atualizados; título integrado é somente leitura e não é consumido nas superfícies da marca)
+- [x] Preservar somente identificadores técnicos internos cuja renomeação possa quebrar compatibilidade, garantindo que não fiquem visíveis ao usuário (cookie de sessão, domínio criptográfico e nome interno do pacote)
+- [x] Adicionar regressões contra ocorrências residuais da marca anterior e validar fluxos de e-mail
+- [x] Validar TypeScript, suíte Vitest, build e interface responsiva antes de salvar nova versão (TypeScript sem erros, 155 testes aprovados, 1 ignorado, build concluído, telas desktop e móvel verificadas sem erros atuais de execução)
+- [x] Auditar o contrato atual do consolidado por organização exclusivo do SPC_ADMIN e mapear os vínculos de credores por linkedToOrganizationId (a implementação agrupava campanhas por organizationId; o novo modelo deve agrupar por creditorOrganizationId e pelo vínculo do credor com a organização-pai)
+- [x] Agrupar credores diretamente vinculados ao SPC Brasil no combo SPC Brasil, com uma coluna e métricas separadas para cada credor
+- [x] Agrupar, dentro de cada CDL, todos os credores vinculados àquela CDL, com uma coluna e métricas separadas para cada credor
+- [x] Agrupar, dentro de cada Distribuidora, todos os credores vinculados àquela Distribuidora, com uma coluna e métricas separadas para cada credor
+- [x] Alinhar a tabela detalhada do consolidado à hierarquia organização-pai e credores, sem duplicidade ou mistura entre grupos
+- [x] Preservar o consolidado hierárquico exclusivamente para SPC_ADMIN da organização SPC Brasil e manter os demais dashboards inalterados
+- [x] Adicionar regressões de backend e interface para escopo, vínculos, totais por credor, grupos vazios e responsividade (14 verificações direcionadas aprovadas)
+- [x] Validar TypeScript, suíte Vitest, build e interface do consolidado hierárquico antes de salvar nova versão (TypeScript sem erros, 158 testes aprovados, 1 ignorado, build concluído, contratos desktop/móvel cobertos e sem erros atuais de execução)
+- [x] Reproduzir por dados reais por que Jeitto e Vivo, apesar de vinculados diretamente ao SPC Brasil e possuírem disparos, não aparecem no consolidado (ambos estavam sem vínculo preenchido, mas com campanhas e disparos registrados sob organizationId do SPC Brasil)
+- [x] Corrigir a resolução do vínculo direto com SPC Brasil considerando os campos efetivamente persistidos nas organizações e campanhas existentes
+- [x] Exibir no combo SPC Brasil todo credor diretamente vinculado que possua disparos dentro do período selecionado, com coluna e métricas próprias
+- [x] Alinhar a tabela detalhada para listar os mesmos credores diretos exibidos no combo SPC Brasil
+- [x] Adicionar regressões para Jeitto, Vivo, variações de vínculo legado e isolamento dos grupos CDL/Distribuidora (14 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a versão corrigida (TypeScript sem erros, 159 testes aprovados, 1 ignorado, build concluído e sem erros atuais de execução)
+- [x] Adicionar limitador de 164 caracteres (com espaços) no campo de conteúdo de templates SMS durante a criação, travando a entrada quando ultrapassado
+- [x] Exibir mensagem de aviso ao usuário quando o limite for atingido (contador e aviso de "Limite excedido" em vermelho)
+- [x] Validar o limitador com regressões de interface e backend (TypeScript sem erros, 159 testes aprovados, 1 ignorado, build concluído)
+- [x] Auditar rotas, menus, funcionalidades e permissões efetivas dos perfis SPC, CDL, Distribuidora e Credor
+- [x] Criar conteúdo completo de perguntas e respostas por funcionalidade, com categorias, exemplos práticos e orientações passo a passo
+- [x] Adicionar exemplos visuais de telas e fluxos críticos sem expor dados pessoais ou credenciais
+- [x] Implementar página FAQ pesquisável, categorizada e responsiva no menu lateral autenticado
+- [x] Filtrar automaticamente o FAQ para SPC ver todo o conteúdo e CDL, Distribuidora e Credor verem somente as funcionalidades autorizadas
+- [x] Adicionar estados vazios de busca, navegação acessível e atalhos para as telas correspondentes
+- [x] Adicionar regressões de menu, visibilidade por perfil, busca, categorias, conteúdo e responsividade (12 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 171 testes aprovados, 1 ignorado, build concluído, componente real coberto em JSDOM e rota protegida confirmada no preview)
+- [x] Preservar e publicar externamente as seis imagens anexas de exemplos de E-mail, sem armazená-las dentro do projeto
+- [x] Mapear TP-330001, TP-240001, TP-300001, TP-390001, TP-270001 e TP-360001 às respectivas imagens anexas
+- [x] Exibir a imagem correspondente abaixo de Pré-visualização segura somente quando o canal for E-mail e o ID público tiver imagem mapeada
+- [x] Manter SMS, WhatsApp, RCS e templates de E-mail sem imagem mapeada exatamente com o comportamento atual
+- [x] Garantir dimensionamento responsivo, texto alternativo e tratamento seguro de carregamento da imagem
+- [x] Adicionar regressões para associação por ID, exclusividade do canal E-mail, ausência de mapeamento e responsividade (13 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 184 testes aprovados, 1 ignorado, build concluído, seis ativos respondendo HTTP 200 e sem erros atuais de execução)
+- [x] Auditar a origem de Base incluída, Envios, Entregues, Abertos, Cliques e SPAM nos destinatários, eventos e agregações atuais do Dashboard (Base incluída vem de recipientCount; Envios e Entregues das campanhas; Abertos, Cliques e SPAM serão destinatários únicos nos eventos READ, CLICKED e SPAM)
+- [x] Consolidar no backend as quantidades de Base incluída, Envios, Entregues, Abertos, Cliques e SPAM dentro dos filtros e escopos existentes
+- [x] Definir percentuais de Entregues, Abertos, Cliques e SPAM com denominadores consistentes e tratamento seguro de divisão por zero (Entregues sobre Envios; Abertos, Cliques e SPAM sobre Entregues)
+- [x] Substituir somente os indicadores superiores por Base incluída, Envios, Entregues, Abertos e Cliques, preservando o restante do Dashboard
+- [x] Exibir SPAM, com quantidade e percentual, exclusivamente para usuário de nível SPC
+- [x] Manter aparência uniforme, acessibilidade e responsividade dos indicadores em todos os níveis
+- [x] Adicionar regressões de backend e interface para métricas, percentuais, escopo organizacional, divisão por zero e visibilidade de SPAM (20 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 186 testes aprovados, 1 ignorado, build concluído e sem erros atuais de execução)

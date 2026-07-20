@@ -1,109 +1,291 @@
-import { eq } from "drizzle-orm";
+import { and, count, desc, eq, gt, gte, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import {
+  authChallenges,
+  authSessions,
+  organizations,
+  users,
+} from "../drizzle/schema";
+import { loadRetentionPolicy, retentionCutoff } from "./retention-config";
+
+type User = typeof users.$inferSelect;
+type InsertAuthChallenge = typeof authChallenges.$inferInsert;
+type InsertAuthSession = typeof authSessions.$inferInsert;
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+    _db = drizzle(process.env.DATABASE_URL);
   }
   return _db;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
-  if (!user.organizationId) {
-    console.warn("[Database] User upsert attempted without organizationId", user.openId);
-    throw new Error("organizationId is required for user upsert");
-  }
-
+async function requireDb() {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
+  if (!db) throw new Error("Banco de dados indisponível.");
+  return db;
+}
 
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-      name: user.name ?? "",
-      email: user.email ?? "",
-      organizationId: user.organizationId ?? 1, // Default to a valid organization ID if possible, or handle appropriately
-      cpf: user.cpf ?? "00000000000",
-      passwordHash: user.passwordHash ?? "",
-      loginMethod: user.loginMethod ?? "password",
-      role: user.role ?? (user.openId === ENV.ownerOpenId ? "SPC_ADMIN" : "REQUESTER"),
-      status: user.status ?? "ACTIVE",
-      mustChangePassword: user.mustChangePassword ?? false,
-      failedLoginAttempts: user.failedLoginAttempts ?? 0,
-      createdAt: user.createdAt ?? new Date(),
-      updatedAt: user.updatedAt ?? new Date(),
-      lastSignedIn: user.lastSignedIn ?? new Date(),
-      phone: user.phone ?? null,
-      lockedUntil: user.lockedUntil ?? null,
-      passwordChangedAt: user.passwordChangedAt ?? null,
-      createdByUserId: user.createdByUserId ?? null,
-      deletedAt: user.deletedAt ?? null,
-    };
+export async function getUserByEmail(email: string) {
+  const db = await requireDb();
+  return (
+    await db.select().from(users).where(eq(users.email, email)).limit(1)
+  )[0];
+}
 
-    const updateSet: Partial<InsertUser> = {};
-
-    // Populate updateSet with fields from the user object that are explicitly provided
-    // and are not 'openId'.
-    for (const key in user) {
-      if (key !== "openId" && (user as any)[key] !== undefined) {
-        (updateSet as any)[key] = (user as any)[key] ?? null;
-      }
-    }
-
-    // Ensure lastSignedIn is always updated in updateSet
-    updateSet.lastSignedIn = user.lastSignedIn ?? new Date();
-
-    // If role was not explicitly provided in the user object, ensure it's set correctly in updateSet
-    if (user.role === undefined) {
-      updateSet.role = values.role;
-    }
-
-    // If no other fields were updated, ensure lastSignedIn is still set
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    // Ensure organizationId is always present in updateSet
-    if (updateSet.organizationId === undefined) {
-      updateSet.organizationId = values.organizationId;
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+export async function getUserById(id: number) {
+  const db = await requireDb();
+  return (await db.select().from(users).where(eq(users.id, id)).limit(1))[0];
 }
 
 export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  const db = await requireDb();
+  return (
+    await db.select().from(users).where(eq(users.openId, openId)).limit(1)
+  )[0];
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function upsertUser(input: Partial<User> & { openId: string }) {
+  const existing = await getUserByOpenId(input.openId);
+  if (!existing) {
+    throw new Error(
+      "Provisionamento OAuth está desabilitado; crie o usuário pelo painel.",
+    );
+  }
+  const db = await requireDb();
+  await db
+    .update(users)
+    .set({
+      lastSignedIn: input.lastSignedIn ?? new Date(),
+      ...(input.name ? { name: input.name } : {}),
+    })
+    .where(eq(users.id, existing.id));
+}
+
+export async function updateLoginFailure(
+  userId: number,
+  attempts: number,
+  lockedUntil: Date | null,
+) {
+  const db = await requireDb();
+  await db
+    .update(users)
+    .set({
+      failedLoginAttempts: attempts,
+      lockedUntil,
+      ...(lockedUntil ? { status: "LOCKED" as const } : {}),
+    })
+    .where(eq(users.id, userId));
+}
+
+export async function clearLoginFailures(userId: number) {
+  const db = await requireDb();
+  await db
+    .update(users)
+    .set({ failedLoginAttempts: 0, lockedUntil: null, status: "ACTIVE" })
+    .where(eq(users.id, userId));
+}
+
+export async function markSignedIn(userId: number) {
+  const db = await requireDb();
+  await db
+    .update(users)
+    .set({ lastSignedIn: new Date() })
+    .where(eq(users.id, userId));
+}
+
+export async function createAuthChallenge(input: InsertAuthChallenge) {
+  const db = await requireDb();
+  await db.insert(authChallenges).values(input);
+}
+
+export async function countRecentAuthChallenges(
+  userId: number,
+  type: InsertAuthChallenge["type"],
+  since: Date,
+) {
+  const db = await requireDb();
+  const [result] = await db
+    .select({ total: count() })
+    .from(authChallenges)
+    .where(and(eq(authChallenges.userId, userId), eq(authChallenges.type, type), gte(authChallenges.createdAt, since)));
+  return Number(result?.total ?? 0);
+}
+
+export async function getAuthChallenge(id: string) {
+  const db = await requireDb();
+  return (
+    await db
+      .select()
+      .from(authChallenges)
+      .where(eq(authChallenges.id, id))
+      .limit(1)
+  )[0];
+}
+
+export async function listUsableAuthChallenges(
+  userId: number,
+  type: InsertAuthChallenge["type"],
+  now = new Date(),
+) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(authChallenges)
+    .where(
+      and(
+        eq(authChallenges.userId, userId),
+        eq(authChallenges.type, type),
+        isNull(authChallenges.usedAt),
+        gt(authChallenges.expiresAt, now),
+        sql`${authChallenges.attempts} < ${authChallenges.maxAttempts}`,
+      ),
+    )
+    .orderBy(desc(authChallenges.createdAt))
+    .limit(10);
+}
+
+export async function incrementChallengeAttempts(id: string) {
+  const db = await requireDb();
+  await db
+    .update(authChallenges)
+    .set({ attempts: sql`${authChallenges.attempts} + 1` })
+    .where(and(eq(authChallenges.id, id), isNull(authChallenges.usedAt)));
+}
+
+export async function consumeChallenge(id: string) {
+  const db = await requireDb();
+  const result = await db
+    .update(authChallenges)
+    .set({ usedAt: new Date() })
+    .where(and(eq(authChallenges.id, id), isNull(authChallenges.usedAt)));
+  return Number(result[0].affectedRows) === 1;
+}
+
+export async function consumeOtherAuthChallenges(
+  userId: number,
+  type: InsertAuthChallenge["type"],
+  exceptId: string,
+) {
+  const db = await requireDb();
+  await db
+    .update(authChallenges)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(authChallenges.userId, userId),
+        eq(authChallenges.type, type),
+        ne(authChallenges.id, exceptId),
+        isNull(authChallenges.usedAt),
+      ),
+    );
+}
+
+export async function cleanupExpiredAuthArtifacts(now = new Date()) {
+  const db = await requireDb();
+  const policy = loadRetentionPolicy();
+  const challengeCutoff = retentionCutoff(now, policy.authChallengeDays);
+  const sessionCutoff = retentionCutoff(now, policy.authSessionDays);
+  await db.delete(authChallenges).where(lt(authChallenges.expiresAt, challengeCutoff));
+  await db.delete(authSessions).where(or(lt(authSessions.expiresAt, sessionCutoff), and(isNotNull(authSessions.revokedAt), lt(authSessions.revokedAt, sessionCutoff))));
+}
+
+export async function createAuthSession(input: InsertAuthSession) {
+  const db = await requireDb();
+  await db.insert(authSessions).values(input);
+}
+
+export async function getSessionWithUserByTokenHash(tokenHash: string) {
+  const db = await requireDb();
+  return (
+    await db
+      .select({
+        session: authSessions,
+        user: users,
+        organization: organizations,
+      })
+      .from(authSessions)
+      .innerJoin(users, eq(authSessions.userId, users.id))
+      .innerJoin(organizations, eq(users.organizationId, organizations.id))
+      .where(
+        and(
+          eq(authSessions.tokenHash, tokenHash),
+          isNull(authSessions.revokedAt),
+          gt(authSessions.expiresAt, new Date()),
+        ),
+      )
+      .limit(1)
+  )[0];
+}
+
+export async function revokeSession(id: string) {
+  const db = await requireDb();
+  await db
+    .update(authSessions)
+    .set({ revokedAt: new Date() })
+    .where(eq(authSessions.id, id));
+}
+
+export async function revokeAllSessions(userId: number) {
+  const db = await requireDb();
+  await db
+    .update(authSessions)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+}
+
+export async function revokeOtherSessions(userId: number, currentId: string) {
+  const db = await requireDb();
+  await db
+    .update(authSessions)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(authSessions.userId, userId),
+        ne(authSessions.id, currentId),
+        isNull(authSessions.revokedAt),
+      ),
+    );
+}
+
+export async function upgradeSessionToMfa(id: string) {
+  const db = await requireDb();
+  await db
+    .update(authSessions)
+    .set({ assuranceLevel: "MFA", lastSeenAt: new Date() })
+    .where(eq(authSessions.id, id));
+}
+
+export async function completePasswordChange(
+  userId: number,
+  passwordHash: string,
+) {
+  const db = await requireDb();
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      mustChangePassword: false,
+      passwordChangedAt: new Date(),
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      status: "ACTIVE",
+    })
+    .where(eq(users.id, userId));
+}
+
+export async function listActiveSessions(userId: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(authSessions)
+    .where(
+      and(
+        eq(authSessions.userId, userId),
+        isNull(authSessions.revokedAt),
+        gt(authSessions.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(desc(authSessions.createdAt));
+}
