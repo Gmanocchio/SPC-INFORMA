@@ -209,3 +209,10 @@
 - [x] Adicionar estados vazios de busca, navegação acessível e atalhos para as telas correspondentes
 - [x] Adicionar regressões de menu, visibilidade por perfil, busca, categorias, conteúdo e responsividade (12 testes direcionados aprovados)
 - [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 171 testes aprovados, 1 ignorado, build concluído, componente real coberto em JSDOM e rota protegida confirmada no preview)
+- [x] Preservar e publicar externamente as seis imagens anexas de exemplos de E-mail, sem armazená-las dentro do projeto
+- [x] Mapear TP-330001, TP-240001, TP-300001, TP-390001, TP-270001 e TP-360001 às respectivas imagens anexas
+- [x] Exibir a imagem correspondente abaixo de Pré-visualização segura somente quando o canal for E-mail e o ID público tiver imagem mapeada
+- [x] Manter SMS, WhatsApp, RCS e templates de E-mail sem imagem mapeada exatamente com o comportamento atual
+- [x] Garantir dimensionamento responsivo, texto alternativo e tratamento seguro de carregamento da imagem
+- [x] Adicionar regressões para associação por ID, exclusividade do canal E-mail, ausência de mapeamento e responsividade (13 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 184 testes aprovados, 1 ignorado, build concluído, seis ativos respondendo HTTP 200 e sem erros atuais de execução)

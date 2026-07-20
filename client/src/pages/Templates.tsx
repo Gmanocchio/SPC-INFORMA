@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { QueryErrorState } from "@/components/QueryErrorState";
+import { getEmailTemplatePreviewImage, type EmailTemplatePreviewImage } from "@/lib/email-template-preview-images";
 import { trpc } from "@/lib/trpc";
 import {
   extractTemplateVariables,
@@ -39,6 +40,7 @@ export default function Templates() {
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+  const [editingTemplatePublicId, setEditingTemplatePublicId] = useState<string | null>(null);
   const [variablePickerOpen, setVariablePickerOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -52,6 +54,7 @@ export default function Templates() {
     onSuccess: async createdTemplate => {
       await utils.commercial.templates.list.invalidate();
       setOpen(false);
+      setEditingTemplatePublicId(null);
       setForm({ name: "", channel: "SMS", subject: "", content: "", status: "DRAFT" });
       toast.success(`Template ${createdTemplate.publicId} registrado na biblioteca homologada.`);
     },
@@ -62,6 +65,7 @@ export default function Templates() {
       await utils.commercial.templates.list.invalidate();
       setOpen(false);
       setEditingTemplateId(null);
+      setEditingTemplatePublicId(null);
       toast.success("Template atualizado e nova versão registrada na auditoria.");
     },
     onError: error => toast.error(error.message),
@@ -70,6 +74,7 @@ export default function Templates() {
   const unsupportedVariables = findUnsupportedTemplateVariables(form.subject, form.content);
   const previewSubject = renderSafePreview(form.subject || "Assunto demonstrativo");
   const previewContent = renderSafePreview(form.content || "A pré-visualização aparecerá aqui conforme o conteúdo for digitado.");
+  const emailPreviewImage = form.channel === "EMAIL" ? getEmailTemplatePreviewImage(editingTemplatePublicId) : null;
   const destinationColumn = "CPF";
 
   function submit(event: FormEvent) {
@@ -80,11 +85,13 @@ export default function Templates() {
   }
 
   function resetForm() {
+    setEditingTemplatePublicId(null);
     setForm({ name: "", channel: "SMS", subject: "", content: "", status: "DRAFT" });
   }
 
   function startEditingTemplate(template: NonNullable<typeof templates.data>[number]) {
     setEditingTemplateId(template.id);
+    setEditingTemplatePublicId(template.publicId);
     setForm({
       name: template.name,
       channel: template.channel,
@@ -123,7 +130,7 @@ export default function Templates() {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={next => { setOpen(next); if (!next) setEditingTemplateId(null); }}>
+          <Dialog open={open} onOpenChange={next => { setOpen(next); if (!next) { setEditingTemplateId(null); setEditingTemplatePublicId(null); } }}>
             <DialogTrigger asChild>
               <Button onClick={() => { setEditingTemplateId(null); resetForm(); }} className="h-11 bg-[#0066cc] px-5 text-white hover:bg-[#004a99]"><Plus className="size-4" /> Novo template</Button>
             </DialogTrigger>
@@ -245,6 +252,13 @@ export default function Templates() {
                   </div>
                   {form.channel === "EMAIL" && <div className="mt-4 rounded-lg border bg-white px-3 py-2 text-sm"><span className="font-semibold text-slate-600">Assunto: </span>{previewSubject}</div>}
                   <pre className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-white p-4 font-sans text-sm leading-6 text-slate-700 shadow-sm">{previewContent}</pre>
+                  {emailPreviewImage && editingTemplatePublicId && (
+                    <EmailTemplateVisualPreview
+                      key={editingTemplatePublicId}
+                      publicId={editingTemplatePublicId}
+                      image={emailPreviewImage}
+                    />
+                  )}
                 </section>
 
                 <div className="flex justify-end gap-3 border-t pt-4">
@@ -298,4 +312,32 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Empty({ icon: Icon, title, description }: { icon: typeof FileText; title: string; description: string }) {
   return <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed bg-slate-50/70 p-8 text-center"><Icon className="size-10 text-[#0066cc]" /><h3 className="mt-4 font-bold text-slate-900">{title}</h3><p className="mt-1 text-sm text-slate-500">{description}</p></div>;
+}
+
+function EmailTemplateVisualPreview({ publicId, image }: { publicId: string; image: EmailTemplatePreviewImage }) {
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  return (
+    <figure className="mt-4 border-t border-slate-200 pt-4" data-testid={`email-template-visual-${publicId}`}>
+      <figcaption>
+        <p className="text-sm font-bold text-slate-900">Exemplo visual do e-mail</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">Imagem de referência vinculada ao template {publicId}.</p>
+      </figcaption>
+      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
+        {loadFailed ? (
+          <div className="flex min-h-32 items-center justify-center rounded-lg bg-slate-50 p-6 text-center text-sm text-slate-500" role="status">
+            A imagem de exemplo está temporariamente indisponível.
+          </div>
+        ) : (
+          <img
+            src={image.src}
+            alt={image.alt}
+            className="mx-auto h-auto w-full max-w-[45rem] rounded-lg object-contain"
+            decoding="async"
+            onError={() => setLoadFailed(true)}
+          />
+        )}
+      </div>
+    </figure>
+  );
 }
