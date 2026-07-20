@@ -17,6 +17,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Faq = lazy(() => import("./pages/Faq"));
 const FirstAccess = lazy(() => import("./pages/FirstAccess"));
 const Home = lazy(() => import("./pages/Home"));
+const Manual = lazy(() => import("./pages/Manual"));
 const ModulePlaceholder = lazy(() => import("./pages/ModulePlaceholder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Organizations = lazy(() => import("./pages/Organizations"));
@@ -71,6 +72,7 @@ function Router() {
       <Route path="/app/brokers">{() => <ProtectedPage spcOnly><Brokers /></ProtectedPage>}</Route>
       <Route path="/app/chaves-api">{() => <ProtectedPage><ApiKeys /></ProtectedPage>}</Route>
       <Route path="/app/faq">{() => <ProtectedPage><Faq /></ProtectedPage>}</Route>
+      <Route path="/app/manual">{() => <ProtectedPage><Manual /></ProtectedPage>}</Route>
       <Route path="/app/dominios">
         {() => (
           <ProtectedPage spcOnly>

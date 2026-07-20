@@ -224,3 +224,15 @@
 - [x] Manter aparência uniforme, acessibilidade e responsividade dos indicadores em todos os níveis
 - [x] Adicionar regressões de backend e interface para métricas, percentuais, escopo organizacional, divisão por zero e visibilidade de SPAM (20 testes direcionados aprovados)
 - [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 186 testes aprovados, 1 ignorado, build concluído e sem erros atuais de execução)
+- [x] Inventariar todas as rotas, telas e itens do menu lateral existentes para compor o Manual
+- [x] Mapear as permissões de SPC, Credor, Distribuidora e CDL por rota e funcionalidade
+- [x] Definir a estrutura de dados do Manual com visibilidade explícita por perfil
+- [x] Redigir instruções completas, exemplos e orientações para todas as telas acessíveis
+- [x] Capturar telas reais representativas para ilustrar o Manual
+- [x] Armazenar e referenciar corretamente as imagens utilizadas no Manual
+- [x] Criar a página responsiva do Manual com sumário, busca e navegação por seção
+- [x] Filtrar o conteúdo do Manual pelo perfil autenticado sem expor seções não autorizadas
+- [x] Adicionar o item Manual ao menu lateral e configurar sua rota protegida
+- [x] Adicionar estados de carregamento, vazio e erro na página do Manual
+- [x] Criar testes Vitest para permissões, conteúdo, navegação e estados do Manual
+- [x] Validar TypeScript, suíte Vitest, build e interface responsiva do Manual (206 testes aprovados, 1 ignorado e build concluído)
