@@ -8,9 +8,6 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { registerBrokerWebhookRoutes } from "../webhook-routes";
-import { registerScheduledRoutes } from "../scheduled-routes";
-import { isTrustedMutationOrigin } from "../http-security";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -33,31 +30,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
-  app.set("trust proxy", 1);
-  app.disable("x-powered-by");
-  app.use((req, res, next) => {
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
-    if (process.env.NODE_ENV === "production") {
-      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-      res.setHeader("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https: wss:; form-action 'self'");
-    }
-    next();
-  });
   const server = createServer(app);
-  registerBrokerWebhookRoutes(app);
   // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "15mb" }));
-  app.use(express.urlencoded({ limit: "2mb", extended: true }));
-  registerScheduledRoutes(app);
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
-  app.use("/api/trpc", (req, res, next) => {
-    if (req.method !== "POST" || isTrustedMutationOrigin(req)) return next();
-    return res.status(403).json({ error: "untrusted-origin" });
-  });
   // tRPC API
   app.use(
     "/api/trpc",
