@@ -3,12 +3,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, CheckCircle2, CircleDollarSign, Clock3, Send, TrendingUp, TriangleAlert } from "lucide-react";
+import { BarChart3, CheckCircle2, Clock3, Database, Eye, MailWarning, MousePointerClick, Send, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const labels = { SMS: "SMS", EMAIL: "E-mail", WHATSAPP: "WhatsApp", RCS: "RCS" };
 const integer = new Intl.NumberFormat("pt-BR");
 const currency = (micros: number) => (micros / 1_000_000).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const percentage = (value: number) => `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 const organizationTypeLabel: Record<string, string> = { SPC_BRASIL: "SPC Brasil", CDL: "CDL", DISTRIBUTOR: "Distribuidora", CREDITOR: "Credor" };
 
 export default function Dashboard() {
@@ -20,19 +21,23 @@ export default function Dashboard() {
   );
   const overview = trpc.dashboard.overview.useQuery(overviewInput, { refetchInterval: 30_000 });
   if (overview.isLoading) {
-    return <div className="space-y-6"><Skeleton className="h-24" /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-40" />)}</div><Skeleton className="h-80" /></div>;
+    const indicatorCount = user?.user.role === "SPC_ADMIN" ? 6 : 5;
+    return <div className="space-y-6"><Skeleton className="h-24" /><div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${indicatorCount === 6 ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}>{Array.from({ length: indicatorCount }, (_, index) => <Skeleton key={index} className="h-40" />)}</div><Skeleton className="h-80" /></div>;
   }
   if (overview.isError || !overview.data) {
     return <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700"><TriangleAlert className="mb-3 size-6" /><p className="font-bold">Não foi possível carregar os indicadores.</p><p className="mt-1 text-sm">{overview.error?.message}</p></div>;
   }
 
   const data = overview.data;
+  const isSpcLevel = user?.user.role === "SPC_ADMIN";
   const canViewOrganizationConsolidation = user?.user.role === "SPC_ADMIN" && user.organization.type === "SPC_BRASIL";
   const cards = [
-    { label: "Envios no período", value: integer.format(data.sent), detail: `${integer.format(data.campaignCount)} campanhas`, icon: Send, accent: "text-[#0066CC] bg-blue-50" },
-    { label: "Entregas confirmadas", value: integer.format(data.delivered), detail: `${integer.format(data.failed)} falhas`, icon: CheckCircle2, accent: "text-[#00A86B] bg-emerald-50" },
-    { label: "Taxa de entrega", value: `${data.deliveryRate.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`, detail: "sobre destinatários válidos", icon: TrendingUp, accent: "text-[#0066CC] bg-blue-50" },
-    { label: "Valor processado", value: currency(data.processedMicros), detail: "últimos 30 dias", icon: CircleDollarSign, accent: "text-amber-600 bg-amber-50" },
+    { key: "base-incluida", label: "Base incluída", value: integer.format(data.baseIncluded), detail: "registros carregados", icon: Database, accent: "text-violet-700 bg-violet-50" },
+    { key: "envios", label: "Envios", value: integer.format(data.sent), detail: `${integer.format(data.campaignCount)} campanhas`, icon: Send, accent: "text-[#0066CC] bg-blue-50" },
+    { key: "entregues", label: "Entregues", value: integer.format(data.delivered), detail: `${percentage(data.deliveryRate)} dos envios`, icon: CheckCircle2, accent: "text-[#00A86B] bg-emerald-50" },
+    { key: "abertos", label: "Abertos", value: integer.format(data.opened), detail: `${percentage(data.openRate)} dos entregues`, icon: Eye, accent: "text-cyan-700 bg-cyan-50" },
+    { key: "cliques", label: "Cliques", value: integer.format(data.clicked), detail: `${percentage(data.clickRate)} dos entregues`, icon: MousePointerClick, accent: "text-amber-700 bg-amber-50" },
+    ...(isSpcLevel ? [{ key: "spam", label: "SPAM", value: integer.format(data.spam ?? 0), detail: `${percentage(data.spamRate ?? 0)} dos entregues`, icon: MailWarning, accent: "text-red-700 bg-red-50" }] : []),
   ];
 
   return <div className="space-y-7">
@@ -44,7 +49,7 @@ export default function Dashboard() {
       </div>
     </div>
 
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ label, value, detail, icon: Icon, accent }) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-3 text-3xl font-extrabold tracking-tight text-[#003B7A]">{value}</p></div><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></span></div><p className="mt-5 text-xs text-slate-400">{detail}</p></article>)}</div>
+    <div data-testid="dashboard-indicators" className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${isSpcLevel ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}>{cards.map(({ key, label, value, detail, icon: Icon, accent }) => <article data-testid={`indicator-${key}`} key={key} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-3 truncate text-3xl font-extrabold tracking-tight text-[#003B7A]" title={value}>{value}</p></div><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></span></div><p className="mt-5 text-xs text-slate-400">{detail}</p></article>)}</div>
 
     <div className="grid gap-5 xl:grid-cols-[1.45fr_.55fr]">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-bold text-[#003B7A]">Desempenho por canal</h2><p className="mt-1 text-sm text-slate-500">Destinatários válidos, entregues e com falha</p></div><BarChart3 className="h-5 w-5 text-[#0066CC]" /></div>{data.byChannel.length ? <div className="mt-7 space-y-5">{data.byChannel.map(item => { const rate = item.sent ? item.delivered / item.sent * 100 : 0; return <div key={item.channel}><div className="mb-2 flex items-center justify-between text-sm"><span className="font-bold text-slate-800">{labels[item.channel]}</span><span className="text-slate-500">{integer.format(item.delivered)} de {integer.format(item.sent)} · {rate.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span></div><div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-[#0066CC] to-[#00A86B]" style={{ width: `${Math.min(100, rate)}%` }} /></div></div>; })}</div> : <EmptyChart />}</section>

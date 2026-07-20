@@ -216,3 +216,11 @@
 - [x] Garantir dimensionamento responsivo, texto alternativo e tratamento seguro de carregamento da imagem
 - [x] Adicionar regressões para associação por ID, exclusividade do canal E-mail, ausência de mapeamento e responsividade (13 testes direcionados aprovados)
 - [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 184 testes aprovados, 1 ignorado, build concluído, seis ativos respondendo HTTP 200 e sem erros atuais de execução)
+- [x] Auditar a origem de Base incluída, Envios, Entregues, Abertos, Cliques e SPAM nos destinatários, eventos e agregações atuais do Dashboard (Base incluída vem de recipientCount; Envios e Entregues das campanhas; Abertos, Cliques e SPAM serão destinatários únicos nos eventos READ, CLICKED e SPAM)
+- [x] Consolidar no backend as quantidades de Base incluída, Envios, Entregues, Abertos, Cliques e SPAM dentro dos filtros e escopos existentes
+- [x] Definir percentuais de Entregues, Abertos, Cliques e SPAM com denominadores consistentes e tratamento seguro de divisão por zero (Entregues sobre Envios; Abertos, Cliques e SPAM sobre Entregues)
+- [x] Substituir somente os indicadores superiores por Base incluída, Envios, Entregues, Abertos e Cliques, preservando o restante do Dashboard
+- [x] Exibir SPAM, com quantidade e percentual, exclusivamente para usuário de nível SPC
+- [x] Manter aparência uniforme, acessibilidade e responsividade dos indicadores em todos os níveis
+- [x] Adicionar regressões de backend e interface para métricas, percentuais, escopo organizacional, divisão por zero e visibilidade de SPAM (20 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 186 testes aprovados, 1 ignorado, build concluído e sem erros atuais de execução)

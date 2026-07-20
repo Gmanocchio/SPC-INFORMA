@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSpcOrganizationConsolidation, resolveDashboardCreditorScope } from "./dashboard-service";
+import { buildSpcOrganizationConsolidation, calculateDashboardRates, resolveDashboardCreditorScope } from "./dashboard-service";
 
 const linkedCreditors = [
   { id: 101, tradeName: "Credor Alfa" },
@@ -61,6 +61,26 @@ describe("escopo de credores do dashboard", () => {
       creditorIds: [],
       creditorOptions: [],
       selectedCreditorId: null,
+    });
+  });
+});
+
+describe("percentuais dos indicadores superiores", () => {
+  it("calcula entrega sobre envios e engajamento sobre entregues", () => {
+    expect(calculateDashboardRates({ sent: 100, delivered: 80, opened: 40, clicked: 20, spam: 4 })).toEqual({
+      deliveryRate: 80,
+      openRate: 50,
+      clickRate: 25,
+      spamRate: 5,
+    });
+  });
+
+  it("retorna percentuais zerados quando não há denominador", () => {
+    expect(calculateDashboardRates({ sent: 0, delivered: 0, opened: 0, clicked: 0, spam: 0 })).toEqual({
+      deliveryRate: 0,
+      openRate: 0,
+      clickRate: 0,
+      spamRate: 0,
     });
   });
 });

@@ -6,6 +6,9 @@ describe("webhook de brokers", () => {
   it("normaliza os eventos de entrega suportados", () => {
     expect(mappedEvent("delivery.success")).toEqual({ eventType: "DELIVERED", status: "DELIVERED" });
     expect(mappedEvent("bounced")).toEqual({ eventType: "FAILED", status: "FAILED" });
+    expect(mappedEvent("email.opened")).toEqual({ eventType: "READ", status: null });
+    expect(mappedEvent("link-clicked")).toEqual({ eventType: "CLICKED", status: null });
+    expect(mappedEvent("reported as spam")).toEqual({ eventType: "SPAM", status: "OPTED_OUT" });
     expect(mappedEvent("opt-out")).toEqual({ eventType: "OPTED_OUT", status: "OPTED_OUT" });
     expect(mappedEvent("evento-desconhecido")).toBeNull();
   });

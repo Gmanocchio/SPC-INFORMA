@@ -26,10 +26,13 @@ export function sameHex(actual: string, expected: string) {
 }
 
 export function mappedEvent(value: string) {
-  const event = value.trim().toUpperCase().replace(/[.-]/g, "_");
+  const event = value.trim().toUpperCase().replace(/[.\s-]/g, "_");
   if (["SENT", "ACCEPTED", "QUEUED"].includes(event)) return { eventType: "SENT" as const, status: "SENT" as const };
   if (["DELIVERED", "DELIVERY_SUCCESS"].includes(event)) return { eventType: "DELIVERED" as const, status: "DELIVERED" as const };
   if (["FAILED", "REJECTED", "UNDELIVERED", "BOUNCED"].includes(event)) return { eventType: "FAILED" as const, status: "FAILED" as const };
+  if (["READ", "OPEN", "OPENED", "MESSAGE_OPENED", "EMAIL_OPEN", "EMAIL_OPENED"].includes(event)) return { eventType: "READ" as const, status: null };
+  if (["CLICK", "CLICKED", "LINK_CLICK", "LINK_CLICKED"].includes(event)) return { eventType: "CLICKED" as const, status: null };
+  if (["SPAM", "COMPLAINT", "SPAM_REPORT", "REPORTED_AS_SPAM"].includes(event)) return { eventType: "SPAM" as const, status: "OPTED_OUT" as const };
   if (["OPT_OUT", "UNSUBSCRIBED", "BLOCKED"].includes(event)) return { eventType: "OPTED_OUT" as const, status: "OPTED_OUT" as const };
   return null;
 }
@@ -91,7 +94,7 @@ async function brokerWebhook(req: Request, res: Response) {
     if (!recipient) throw new Error("Destinatário não encontrado.");
     const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, recipient.campaignId), eq(campaigns.brokerId, broker.id))).limit(1);
     if (!campaign || (payload.campaignId && payload.campaignId !== campaign.id)) throw new Error("Campanha incompatível com o broker ou payload.");
-    const nextStatus = nextRecipientStatus(recipient.status, mapped.status);
+    const nextStatus = mapped.status ? nextRecipientStatus(recipient.status, mapped.status) : recipient.status;
     if (nextStatus !== recipient.status || (payload.messageId && payload.messageId !== recipient.brokerMessageId)) {
       await db.update(campaignRecipients).set({ status: nextStatus, brokerMessageId: payload.messageId ?? recipient.brokerMessageId, deliveredAt: nextStatus === "DELIVERED" ? new Date() : recipient.deliveredAt, errorCode: nextStatus === "FAILED" ? "BROKER_DELIVERY_FAILED" : nextStatus === "SENT" ? null : recipient.errorCode }).where(eq(campaignRecipients.id, recipient.id));
     }

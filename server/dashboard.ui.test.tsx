@@ -14,11 +14,18 @@ const mocks = vi.hoisted(() => ({
 
 const overviewData = {
   periodStart: Date.UTC(2026, 5, 1),
+  baseIncluded: 12,
   sent: 10,
   delivered: 8,
+  opened: 6,
+  clicked: 4,
+  spam: 1,
   failed: 2,
   campaignCount: 1,
   deliveryRate: 80,
+  openRate: 75,
+  clickRate: 50,
+  spamRate: 12.5,
   processedMicros: 1_300_000,
   byChannel: [],
   byDay: [],
@@ -113,7 +120,13 @@ describe("Dashboard por tipo de organização", () => {
 
     render(<Dashboard />);
 
-    expect(screen.getByText("Envios no período")).toBeTruthy();
+    expect(screen.getByTestId("indicator-base-incluida").textContent).toContain("Base incluída");
+    expect(screen.getByTestId("indicator-envios").textContent).toContain("Envios");
+    expect(screen.getByTestId("indicator-entregues").textContent).toContain("80% dos envios");
+    expect(screen.getByTestId("indicator-abertos").textContent).toContain("75% dos entregues");
+    expect(screen.getByTestId("indicator-cliques").textContent).toContain("50% dos entregues");
+    expect(screen.queryByTestId("indicator-spam")).toBeNull();
+    expect(screen.getByTestId("dashboard-indicators").className).toContain("xl:grid-cols-5");
     expect(screen.queryByTestId("organization-consolidation")).toBeNull();
     expect(screen.queryByText("Consolidado por organização")).toBeNull();
     expect(screen.queryByTestId("creditor-filter")).toBeNull();
@@ -152,6 +165,8 @@ describe("Dashboard por tipo de organização", () => {
     expect(screen.getByTestId("organization-type-CDL")).toBeTruthy();
     expect(screen.getByTestId("organization-type-DISTRIBUTOR")).toBeTruthy();
     expect(screen.getByTestId("organization-type-SPC_BRASIL")).toBeTruthy();
+    expect(screen.getByTestId("indicator-spam").textContent).toContain("12,5% dos entregues");
+    expect(screen.getByTestId("dashboard-indicators").className).toContain("xl:grid-cols-6");
     expect(screen.getByTestId("creditor-column-21").textContent).toBe("Credor CDL Alfa");
     expect(screen.getByTestId("creditor-column-22").textContent).toBe("Credor CDL Beta");
     expect(screen.getByTestId("creditor-column-31").textContent).toBe("Credor Distribuidora");

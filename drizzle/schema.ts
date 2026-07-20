@@ -399,6 +399,7 @@ export const deliveryEvents = mysqlTable(
       "FAILED",
       "READ",
       "CLICKED",
+      "SPAM",
       "OPTED_OUT",
     ]).notNull(),
     occurredAt: timestamp("occurredAt").notNull(),

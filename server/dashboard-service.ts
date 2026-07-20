@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { campaigns, organizations } from "../drizzle/schema";
+import { campaigns, deliveryEvents, organizations } from "../drizzle/schema";
 import { getDb } from "./db";
 
 type DashboardRole = "SPC_ADMIN" | "ORG_ADMIN" | "REQUESTER";
@@ -45,6 +45,22 @@ export type OrganizationConsolidationGroup = {
 };
 
 const consolidationTypeOrder: ConsolidationParentType[] = ["CDL", "DISTRIBUTOR", "SPC_BRASIL"];
+
+export function calculateDashboardRates(input: {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  spam: number;
+}) {
+  const percentage = (value: number, denominator: number) => denominator > 0 ? (value / denominator) * 100 : 0;
+  return {
+    deliveryRate: percentage(input.delivered, input.sent),
+    openRate: percentage(input.opened, input.delivered),
+    clickRate: percentage(input.clicked, input.delivered),
+    spamRate: percentage(input.spam, input.delivered),
+  };
+}
 
 export function buildSpcOrganizationConsolidation(
   spcOrganizationId: number,
@@ -213,11 +229,19 @@ export async function dashboardOverview(actor: DashboardActor, requestedCreditor
 
   const [summary] = await db.select({
     campaignCount: sql<number>`COUNT(*)`,
+    baseIncluded: sql<number>`COALESCE(SUM(${campaigns.recipientCount}), 0)`,
     sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
     delivered: sql<number>`COALESCE(SUM(${campaigns.deliveredCount}), 0)`,
     failed: sql<number>`COALESCE(SUM(${campaigns.failedCount}), 0)`,
     processedMicros: sql<number>`COALESCE(SUM(${campaigns.totalCostMicros}), 0)`,
   }).from(campaigns).where(processedScope);
+  const [engagementSummary] = await db.select({
+    opened: sql<number>`COUNT(DISTINCT CASE WHEN ${deliveryEvents.eventType} = 'READ' THEN ${deliveryEvents.recipientId} END)`,
+    clicked: sql<number>`COUNT(DISTINCT CASE WHEN ${deliveryEvents.eventType} = 'CLICKED' THEN ${deliveryEvents.recipientId} END)`,
+    spam: sql<number>`COUNT(DISTINCT CASE WHEN ${deliveryEvents.eventType} = 'SPAM' THEN ${deliveryEvents.recipientId} END)`,
+  }).from(deliveryEvents)
+    .innerJoin(campaigns, eq(campaigns.id, deliveryEvents.campaignId))
+    .where(processedScope);
   const byChannel = await db.select({
     channel: campaigns.channel,
     sent: sql<number>`COALESCE(SUM(${campaigns.validRecipientCount}), 0)`,
@@ -317,14 +341,25 @@ export async function dashboardOverview(actor: DashboardActor, requestedCreditor
   const activeCampaigns = await db.select({ id: campaigns.id, name: campaigns.name, channel: campaigns.channel, status: campaigns.status, validRecipients: campaigns.validRecipientCount, deliveredRecipients: campaigns.deliveredCount, failedRecipients: campaigns.failedCount, createdAt: campaigns.createdAt }).from(campaigns).where(activeScope).orderBy(desc(campaigns.createdAt)).limit(10);
   const sent = Number(summary?.sent ?? 0);
   const delivered = Number(summary?.delivered ?? 0);
+  const opened = Number(engagementSummary?.opened ?? 0);
+  const clicked = Number(engagementSummary?.clicked ?? 0);
+  const spam = Number(engagementSummary?.spam ?? 0);
+  const rates = calculateDashboardRates({ sent, delivered, opened, clicked, spam });
   return {
     periodStart,
     campaignCount: Number(summary?.campaignCount ?? 0),
+    baseIncluded: Number(summary?.baseIncluded ?? 0),
     sent,
     delivered,
+    opened,
+    clicked,
+    spam: actor.role === "SPC_ADMIN" ? spam : null,
     failed: Number(summary?.failed ?? 0),
     processedMicros: Number(summary?.processedMicros ?? 0),
-    deliveryRate: sent > 0 ? (delivered / sent) * 100 : 0,
+    deliveryRate: rates.deliveryRate,
+    openRate: rates.openRate,
+    clickRate: rates.clickRate,
+    spamRate: actor.role === "SPC_ADMIN" ? rates.spamRate : null,
     byChannel: byChannel.map(item => ({ channel: item.channel, sent: Number(item.sent), delivered: Number(item.delivered), failed: Number(item.failed) })),
     byDay,
     byMonth,

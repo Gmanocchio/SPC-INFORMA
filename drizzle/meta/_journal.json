@@ -43,6 +43,13 @@
       "when": 1783983274832,
       "tag": "0005_bumpy_flatman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1784584443585,
+      "tag": "0006_zippy_maelstrom",
+      "breakpoints": true
     }
   ]
 }
