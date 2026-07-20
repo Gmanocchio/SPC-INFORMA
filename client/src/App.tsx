@@ -14,6 +14,7 @@ const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const Brokers = lazy(() => import("./pages/Brokers"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Faq = lazy(() => import("./pages/Faq"));
 const FirstAccess = lazy(() => import("./pages/FirstAccess"));
 const Home = lazy(() => import("./pages/Home"));
 const ModulePlaceholder = lazy(() => import("./pages/ModulePlaceholder"));
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/app/precificacao">{() => <ProtectedPage><Pricing /></ProtectedPage>}</Route>
       <Route path="/app/brokers">{() => <ProtectedPage spcOnly><Brokers /></ProtectedPage>}</Route>
       <Route path="/app/chaves-api">{() => <ProtectedPage><ApiKeys /></ProtectedPage>}</Route>
+      <Route path="/app/faq">{() => <ProtectedPage><Faq /></ProtectedPage>}</Route>
       <Route path="/app/dominios">
         {() => (
           <ProtectedPage spcOnly>

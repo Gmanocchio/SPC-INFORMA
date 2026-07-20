@@ -201,3 +201,11 @@
 - [x] Adicionar limitador de 164 caracteres (com espaços) no campo de conteúdo de templates SMS durante a criação, travando a entrada quando ultrapassado
 - [x] Exibir mensagem de aviso ao usuário quando o limite for atingido (contador e aviso de "Limite excedido" em vermelho)
 - [x] Validar o limitador com regressões de interface e backend (TypeScript sem erros, 159 testes aprovados, 1 ignorado, build concluído)
+- [x] Auditar rotas, menus, funcionalidades e permissões efetivas dos perfis SPC, CDL, Distribuidora e Credor
+- [x] Criar conteúdo completo de perguntas e respostas por funcionalidade, com categorias, exemplos práticos e orientações passo a passo
+- [x] Adicionar exemplos visuais de telas e fluxos críticos sem expor dados pessoais ou credenciais
+- [x] Implementar página FAQ pesquisável, categorizada e responsiva no menu lateral autenticado
+- [x] Filtrar automaticamente o FAQ para SPC ver todo o conteúdo e CDL, Distribuidora e Credor verem somente as funcionalidades autorizadas
+- [x] Adicionar estados vazios de busca, navegação acessível e atalhos para as telas correspondentes
+- [x] Adicionar regressões de menu, visibilidade por perfil, busca, categorias, conteúdo e responsividade (12 testes direcionados aprovados)
+- [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a nova versão (TypeScript sem erros, 171 testes aprovados, 1 ignorado, build concluído, componente real coberto em JSDOM e rota protegida confirmada no preview)

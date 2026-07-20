@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Building2, FileKey2, FileText, Gauge, Globe2, LayoutDashboard, LogOut, Megaphone, Network, PanelLeft, Tags, Users } from "lucide-react";
+import { Building2, FileKey2, FileText, Gauge, Globe2, HelpCircle, LayoutDashboard, LogOut, Megaphone, Network, PanelLeft, Tags, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -38,6 +38,7 @@ const menuItems = [
   { icon: Network, label: "Brokers", path: "/app/brokers", roles: ["SPC_ADMIN"] },
   { icon: FileKey2, label: "Chaves de API", path: "/app/chaves-api", roles: ["SPC_ADMIN", "ORG_ADMIN"] },
   { icon: Globe2, label: "Gestão de Domínios", path: "/app/dominios", roles: ["SPC_ADMIN"] },
+  { icon: HelpCircle, label: "FAQ", path: "/app/faq", roles: ["SPC_ADMIN", "ORG_ADMIN", "REQUESTER"] },
 ];
 
 const roleLabels = { SPC_ADMIN: "Administrador SPC Brasil", ORG_ADMIN: "Administrador da organização", REQUESTER: "Solicitante" } as const;
