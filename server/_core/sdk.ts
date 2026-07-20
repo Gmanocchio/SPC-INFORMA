@@ -295,10 +295,21 @@ class SDKServer {
         const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
         await db.upsertUser({
           openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+          name: userInfo.name || "", // Name is required
+          email: userInfo.email ?? "", // Email is required
+          organizationId: -1, // Placeholder, should be set correctly later
+          cpf: "00000000000", // Placeholder
+          passwordHash: "", // Placeholder, not used for OAuth login
+          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? "oauth",
           lastSignedIn: signedInAt,
+          role: "REQUESTER", // Default role
+          status: "ACTIVE", // Default status
+          mustChangePassword: false,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          passwordChangedAt: null,
+          createdByUserId: null,
+          deletedAt: null,
         });
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
@@ -313,6 +324,20 @@ class SDKServer {
 
     await db.upsertUser({
       openId: user.openId,
+      name: user.name,
+      email: user.email,
+      organizationId: user.organizationId,
+      cpf: user.cpf,
+      passwordHash: user.passwordHash,
+      loginMethod: user.loginMethod,
+      role: user.role,
+      status: user.status,
+      mustChangePassword: user.mustChangePassword,
+      failedLoginAttempts: user.failedLoginAttempts,
+      lockedUntil: user.lockedUntil,
+      passwordChangedAt: user.passwordChangedAt,
+      createdByUserId: user.createdByUserId,
+      deletedAt: user.deletedAt,
       lastSignedIn: signedInAt,
     });
 
@@ -334,14 +359,25 @@ function buildCronUser(
   const now = new Date();
   return {
     id: -1,
+    organizationId: -1, // Placeholder for cron user
     openId: userInfo.openId,
     name: userInfo.name || "Manus Scheduled Task",
-    email: null,
-    loginMethod: null,
-    role: "user",
+    cpf: "00000000000", // Placeholder for cron user
+    email: "cron@example.com", // Placeholder for cron user
+    phone: null,
+    passwordHash: "", // Placeholder for cron user
+    loginMethod: "cron", // Placeholder for cron user
+    role: "REQUESTER",
+    status: "ACTIVE", // Placeholder for cron user
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    passwordChangedAt: null,
+    createdByUserId: null,
     createdAt: now,
     updatedAt: now,
     lastSignedIn: now,
+    deletedAt: null,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
   } as AuthenticatedUser;

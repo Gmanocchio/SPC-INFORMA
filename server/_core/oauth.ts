@@ -42,10 +42,24 @@ export function registerOAuthRoutes(app: Express) {
 
       await db.upsertUser({
         openId: userInfo.openId,
-        name: userInfo.name || null,
-        email: userInfo.email ?? null,
-        loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+        name: userInfo.name || "",
+        email: userInfo.email ?? "",
+        organizationId: 1, // Placeholder, should be set correctly later
+        cpf: "00000000000", // Placeholder
+        passwordHash: "", // Placeholder, not used for OAuth login
+        loginMethod: userInfo.loginMethod ?? userInfo.platform ?? "oauth",
+        role: "REQUESTER", // Default role
+        status: "ACTIVE", // Default status
+        mustChangePassword: false,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        passwordChangedAt: null,
+        createdByUserId: null,
+        deletedAt: null,
         lastSignedIn: new Date(),
+        // Adicionar createdAt e updatedAt, que são notNull no schema
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {

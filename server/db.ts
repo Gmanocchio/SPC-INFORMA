@@ -23,6 +23,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     throw new Error("User openId is required for upsert");
   }
 
+  if (!user.organizationId) {
+    console.warn("[Database] User upsert attempted without organizationId", user.openId);
+    throw new Error("organizationId is required for user upsert");
+  }
+
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert user: database not available");
@@ -32,40 +37,52 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   try {
     const values: InsertUser = {
       openId: user.openId,
+      name: user.name ?? "",
+      email: user.email ?? "",
+      organizationId: user.organizationId ?? 1, // Default to a valid organization ID if possible, or handle appropriately
+      cpf: user.cpf ?? "00000000000",
+      passwordHash: user.passwordHash ?? "",
+      loginMethod: user.loginMethod ?? "password",
+      role: user.role ?? (user.openId === ENV.ownerOpenId ? "SPC_ADMIN" : "REQUESTER"),
+      status: user.status ?? "ACTIVE",
+      mustChangePassword: user.mustChangePassword ?? false,
+      failedLoginAttempts: user.failedLoginAttempts ?? 0,
+      createdAt: user.createdAt ?? new Date(),
+      updatedAt: user.updatedAt ?? new Date(),
+      lastSignedIn: user.lastSignedIn ?? new Date(),
+      phone: user.phone ?? null,
+      lockedUntil: user.lockedUntil ?? null,
+      passwordChangedAt: user.passwordChangedAt ?? null,
+      createdByUserId: user.createdByUserId ?? null,
+      deletedAt: user.deletedAt ?? null,
     };
-    const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
+    const updateSet: Partial<InsertUser> = {};
 
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+    // Populate updateSet with fields from the user object that are explicitly provided
+    // and are not 'openId'.
+    for (const key in user) {
+      if (key !== "openId" && (user as any)[key] !== undefined) {
+        (updateSet as any)[key] = (user as any)[key] ?? null;
+      }
     }
 
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
+    // Ensure lastSignedIn is always updated in updateSet
+    updateSet.lastSignedIn = user.lastSignedIn ?? new Date();
+
+    // If role was not explicitly provided in the user object, ensure it's set correctly in updateSet
+    if (user.role === undefined) {
+      updateSet.role = values.role;
     }
 
+    // If no other fields were updated, ensure lastSignedIn is still set
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = new Date();
+    }
+
+    // Ensure organizationId is always present in updateSet
+    if (updateSet.organizationId === undefined) {
+      updateSet.organizationId = values.organizationId;
     }
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({
