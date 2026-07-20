@@ -198,3 +198,6 @@
 - [x] Alinhar a tabela detalhada para listar os mesmos credores diretos exibidos no combo SPC Brasil
 - [x] Adicionar regressões para Jeitto, Vivo, variações de vínculo legado e isolamento dos grupos CDL/Distribuidora (14 testes direcionados aprovados)
 - [x] Validar TypeScript, suíte Vitest, build e interface antes de salvar a versão corrigida (TypeScript sem erros, 159 testes aprovados, 1 ignorado, build concluído e sem erros atuais de execução)
+- [x] Adicionar limitador de 164 caracteres (com espaços) no campo de conteúdo de templates SMS durante a criação, travando a entrada quando ultrapassado
+- [x] Exibir mensagem de aviso ao usuário quando o limite for atingido (contador e aviso de "Limite excedido" em vermelho)
+- [x] Validar o limitador com regressões de interface e backend (TypeScript sem erros, 159 testes aprovados, 1 ignorado, build concluído)

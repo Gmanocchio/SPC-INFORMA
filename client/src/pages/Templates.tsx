@@ -164,6 +164,12 @@ export default function Templates() {
                     <div>
                       <Label htmlFor="template-content">Conteúdo</Label>
                       <p className="mt-1 text-xs text-slate-500">Posicione o cursor na mensagem e selecione uma variável da planilha.</p>
+                      {form.channel === "SMS" && (
+                        <p className="mt-2 text-xs font-semibold text-slate-600">
+                          Limite SMS: {form.content.length}/164 caracteres
+                          {form.content.length > 164 && <span className="ml-2 text-red-600">Limite excedido</span>}
+                        </p>
+                      )}
                     </div>
                     <Popover open={variablePickerOpen} onOpenChange={setVariablePickerOpen}>
                       <PopoverTrigger asChild>
@@ -209,9 +215,17 @@ export default function Templates() {
                     id="template-content"
                     ref={contentRef}
                     required
-                    className="min-h-44 font-mono text-sm"
+                    className={`min-h-44 font-mono text-sm ${
+                      form.channel === "SMS" && form.content.length > 164 ? "border-red-500 bg-red-50" : ""
+                    }`}
                     value={form.content}
-                    onChange={event => setForm({ ...form, content: event.target.value })}
+                    onChange={event => {
+                      const newContent = event.target.value;
+                      if (form.channel === "SMS" && newContent.length > 164) {
+                        return;
+                      }
+                      setForm({ ...form, content: newContent });
+                    }}
                     placeholder="Olá {{nome_cliente}}, o valor de {{valor}} com {{nome_credor}} vence em {{data_vencimento}}. Acesse: {{link}}"
                   />
                 </div>
