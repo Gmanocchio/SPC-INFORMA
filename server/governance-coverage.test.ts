@@ -63,10 +63,14 @@ describe("contrato arquitetural de autorização", () => {
 });
 
 describe("contratos administrativos visíveis", () => {
-  it("mantém Domínios como placeholder exclusivo do SPC_ADMIN", () => {
+  it("mantém o dashboard de Domínios exclusivo do SPC_ADMIN", () => {
     const app = source("client/src/App.tsx");
-    expect(app).toMatch(/path="\/app\/dominios"[\s\S]*?<ProtectedPage spcOnly>[\s\S]*?title="Gestão de Domínios"/);
-    expect(app).toContain("gestão futura de domínios");
+    expect(app).toMatch(/path="\/app\/dominios"[\s\S]*?<ProtectedPage spcOnly>[\s\S]*?<Domains \/>/);
+    expect(app).toContain('const Domains = lazy(() => import("./pages/Domains"))');
+
+    const domains = source("client/src/pages/Domains.tsx");
+    expect(domains).toContain("Aquecimento de Domínios");
+    expect(domains).toContain("Dados demonstrativos");
   });
 
   it("mantém credores separados dentro dos combos de CDL, Distribuidora e SPC Brasil", () => {

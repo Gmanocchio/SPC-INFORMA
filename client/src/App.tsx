@@ -14,6 +14,7 @@ const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const Brokers = lazy(() => import("./pages/Brokers"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Domains = lazy(() => import("./pages/Domains"));
 const Faq = lazy(() => import("./pages/Faq"));
 const FirstAccess = lazy(() => import("./pages/FirstAccess"));
 const Home = lazy(() => import("./pages/Home"));
@@ -76,10 +77,7 @@ function Router() {
       <Route path="/app/dominios">
         {() => (
           <ProtectedPage spcOnly>
-            <ModulePlaceholder
-              title="Gestão de Domínios"
-              description="Área reservada ao SPC Brasil para gestão futura de domínios e configurações associadas."
-            />
+            <Domains />
           </ProtectedPage>
         )}
       </Route>

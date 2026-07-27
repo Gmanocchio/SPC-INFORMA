@@ -256,3 +256,16 @@
 - [x] Implementar carregamento, estado sem imagem, texto alternativo e tratamento de falha dos ativos
 - [x] Adicionar testes Vitest de contrato, permissões e interface para imagens dos templates em campanhas
 - [x] Validar TypeScript, suíte Vitest, build e responsividade do fluxo atualizado (211 testes aprovados, 1 ignorado e build concluído)
+- [x] Analisar em detalhe as cinco referências visuais fornecidas para Gestão de Domínios
+- [x] Confirmar a implementação atual da rota e da tela Gestão de Domínios sem alterar outros módulos
+- [x] Modelar dados demonstrativos isolados e tipados para futura substituição pela API do broker
+- [x] Implementar cabeçalho com ambiente, remetentes e ação ilustrativa de exportação
+- [x] Implementar farol de decisão e cartões de abertura, compliance, bounce e inbox placement
+- [x] Implementar gráfico ilustrativo de evolução do aquecimento
+- [x] Implementar radar de integridade agregada e matriz de autenticação por remetente
+- [x] Implementar tabela de limites por provedor com recomendações e faróis
+- [x] Implementar legenda dos estados Saudável, Atenção, Crítico e Bloqueado
+- [x] Garantir responsividade, acessibilidade e identificação explícita de dados demonstrativos
+- [x] Adicionar testes Vitest específicos da tela Gestão de Domínios
+- [x] Validar TypeScript, suíte Vitest, build e isolamento da alteração aos arquivos de Domínios (33 arquivos aprovados, 1 ignorado e build concluído)
+- [x] Substituir somente o placeholder da rota existente /app/dominios pela página dedicada, preservando caminho, proteção SPC_ADMIN e todas as demais rotas
