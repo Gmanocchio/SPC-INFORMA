@@ -3,6 +3,7 @@ import { Braces, FileText, Mail, MessageSquareText, Pencil, Plus, RadioTower } f
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmailTemplateVisualPreview } from "@/components/EmailTemplateVisualPreview";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { QueryErrorState } from "@/components/QueryErrorState";
-import { getEmailTemplatePreviewImage, type EmailTemplatePreviewImage } from "@/lib/email-template-preview-images";
+import { getEmailTemplatePreviewImage } from "@/lib/email-template-preview-images";
 import { trpc } from "@/lib/trpc";
 import {
   extractTemplateVariables,
@@ -312,32 +313,4 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Empty({ icon: Icon, title, description }: { icon: typeof FileText; title: string; description: string }) {
   return <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed bg-slate-50/70 p-8 text-center"><Icon className="size-10 text-[#0066cc]" /><h3 className="mt-4 font-bold text-slate-900">{title}</h3><p className="mt-1 text-sm text-slate-500">{description}</p></div>;
-}
-
-function EmailTemplateVisualPreview({ publicId, image }: { publicId: string; image: EmailTemplatePreviewImage }) {
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  return (
-    <figure className="mt-4 border-t border-slate-200 pt-4" data-testid={`email-template-visual-${publicId}`}>
-      <figcaption>
-        <p className="text-sm font-bold text-slate-900">Exemplo visual do e-mail</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">Imagem de referência vinculada ao template {publicId}.</p>
-      </figcaption>
-      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
-        {loadFailed ? (
-          <div className="flex min-h-32 items-center justify-center rounded-lg bg-slate-50 p-6 text-center text-sm text-slate-500" role="status">
-            A imagem de exemplo está temporariamente indisponível.
-          </div>
-        ) : (
-          <img
-            src={image.src}
-            alt={image.alt}
-            className="mx-auto h-auto w-full max-w-[45rem] rounded-lg object-contain"
-            decoding="async"
-            onError={() => setLoadFailed(true)}
-          />
-        )}
-      </div>
-    </figure>
-  );
 }

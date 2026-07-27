@@ -1,9 +1,11 @@
 import { Mail, MessageSquareText, RadioTower } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmailTemplateVisualPreview } from "@/components/EmailTemplateVisualPreview";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/QueryErrorState";
+import { getEmailTemplatePreviewImage } from "@/lib/email-template-preview-images";
 
 type Channel = "SMS" | "EMAIL" | "WHATSAPP" | "RCS";
 
@@ -109,6 +111,9 @@ export function TemplateSelectionModal({
               const Icon = channelIcon[template.channel];
               const previewContent = renderSafePreview(template.content);
               const previewSubject = template.subject ? renderSafePreview(template.subject) : null;
+              const emailPreviewImage = template.channel === "EMAIL"
+                ? getEmailTemplatePreviewImage(template.publicId)
+                : null;
 
               return (
                 <div data-testid={`template-card-${template.id}`} key={template.id} className="flex min-h-[30rem] flex-col rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-blue-300 hover:shadow-md sm:p-6">
@@ -138,6 +143,15 @@ export function TemplateSelectionModal({
                       {previewContent}
                     </p>
                   </div>
+
+                  {emailPreviewImage && (
+                    <EmailTemplateVisualPreview
+                      key={template.publicId}
+                      publicId={template.publicId}
+                      image={emailPreviewImage}
+                      className="mb-5"
+                    />
+                  )}
 
                   <Button
                     onClick={() => {

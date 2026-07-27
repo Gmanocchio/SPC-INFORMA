@@ -236,3 +236,23 @@
 - [x] Adicionar estados de carregamento, vazio e erro na página do Manual
 - [x] Criar testes Vitest para permissões, conteúdo, navegação e estados do Manual
 - [x] Validar TypeScript, suíte Vitest, build e interface responsiva do Manual (206 testes aprovados, 1 ignorado e build concluído)
+- [x] Inventariar a árvore de arquivos, dependências, scripts, configurações e versões do projeto para o manual de implantação
+- [x] Documentar a arquitetura geral, os fluxos entre frontend, backend, banco, armazenamento e integrações
+- [x] Documentar integralmente o esquema do banco de dados, relacionamentos, índices, migrações e regras de persistência
+- [x] Documentar autenticação, 2FA, sessões, perfis, tipos de organização e matriz completa de autorização
+- [x] Documentar frontend, componentes, rotas, gerenciamento de estado, responsividade, paleta, tipografia, logos e ativos
+- [x] Documentar backend, tRPC, serviços, validações, campanhas, templates, preços, brokers, webhooks, auditoria e retenção
+- [x] Documentar integrações, variáveis de ambiente, segredos, armazenamento, SendGrid e tarefas periódicas
+- [x] Documentar preparação do ambiente, extração do código, migração, testes, build, implantação e operação
+- [x] Criar diagramas técnicos, trechos de código e tabelas de referência para apoiar a nova equipe
+- [x] Redigir e diagramar o manual técnico completo em formato-fonte editável
+- [x] Gerar o PDF final e validar sumário, paginação, código, tabelas, imagens e legibilidade
+- [x] Preparar a entrega do PDF e do pacote técnico de apoio à equipe solicitante
+- [x] Mapear como as imagens são cadastradas, persistidas e exibidas nos templates de E-mail
+- [x] Mapear o contrato de opções e a seleção de templates no formulário de Campanhas
+- [x] Disponibilizar no contrato autorizado de campanhas as imagens vinculadas a cada template de E-mail
+- [x] Exibir as mesmas imagens do cadastro do template ao selecionar uma campanha de E-mail
+- [x] Garantir a visualização das imagens para SPC_ADMIN, ORG_ADMIN e REQUESTER dentro do respectivo escopo
+- [x] Implementar carregamento, estado sem imagem, texto alternativo e tratamento de falha dos ativos
+- [x] Adicionar testes Vitest de contrato, permissões e interface para imagens dos templates em campanhas
+- [x] Validar TypeScript, suíte Vitest, build e responsividade do fluxo atualizado (211 testes aprovados, 1 ignorado e build concluído)

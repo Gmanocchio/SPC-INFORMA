@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,11 +18,21 @@ const availableTemplates = [
     version: 1,
   },
   {
-    id: 510002,
-    publicId: "TP-510002",
+    id: 330001,
+    publicId: "TP-330001",
     name: "E-mail Cobrança amigável",
     channel: "EMAIL" as const,
     subject: "Negocie sua pendência",
+    content: "Olá {{nome_cliente}}.",
+    variables: ["nome_cliente"],
+    version: 1,
+  },
+  {
+    id: 999999,
+    publicId: "TP-999999",
+    name: "E-mail sem imagem vinculada",
+    channel: "EMAIL" as const,
+    subject: "Comunicado sem imagem",
     content: "Olá {{nome_cliente}}.",
     variables: ["nome_cliente"],
     version: 1,
@@ -64,5 +74,50 @@ describe("TemplateSelectionModal", () => {
 
     expect(onSelect).toHaveBeenCalledWith(510001);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("exibe no template de E-mail a mesma imagem vinculada no cadastro do SPC", async () => {
+    render(
+      <TemplateSelectionModal
+        open
+        onOpenChange={vi.fn()}
+        templates={availableTemplates}
+        isLoading={false}
+        isError={false}
+        onSelect={vi.fn()}
+        selectedChannel="EMAIL"
+      />,
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    const visual = within(dialog).getByTestId("email-template-visual-TP-330001");
+    const image = within(visual).getByRole("img", {
+      name: "Exemplo visual do e-mail de cobrança amigável do SPC Brasil",
+    });
+
+    expect(image.getAttribute("src")).toBe("/manus-storage/TP-330001_27be9cd2.png");
+    expect(image.getAttribute("loading")).toBe("lazy");
+    expect(within(visual).getByText("Imagem de referência vinculada ao template TP-330001.")).toBeTruthy();
+    expect(within(dialog).queryByTestId("email-template-visual-TP-999999")).toBeNull();
+  });
+
+  it("substitui a imagem por um estado acessível quando o ativo não carrega", async () => {
+    render(
+      <TemplateSelectionModal
+        open
+        onOpenChange={vi.fn()}
+        templates={[availableTemplates[1]]}
+        isLoading={false}
+        isError={false}
+        onSelect={vi.fn()}
+        selectedChannel="EMAIL"
+      />,
+    );
+
+    const visual = within(await screen.findByRole("dialog")).getByTestId("email-template-visual-TP-330001");
+    fireEvent.error(within(visual).getByRole("img"));
+
+    expect(within(visual).getByRole("status").textContent).toContain("temporariamente indisponível");
+    expect(within(visual).queryByRole("img")).toBeNull();
   });
 });

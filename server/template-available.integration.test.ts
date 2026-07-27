@@ -65,4 +65,15 @@ describe("listAvailableTemplates - Integration Test", () => {
 
     expect(result.every(t => t.channel === "WHATSAPP")).toBe(true);
   });
+
+  it.each(["SPC_ADMIN", "ORG_ADMIN", "REQUESTER"] as const)(
+    "disponibiliza templates de E-mail com publicId ao papel %s",
+    async role => {
+      const organizationId = role === "SPC_ADMIN" ? 1 : 2;
+      const result = await listAvailableTemplates({ id: 1, organizationId, role }, "EMAIL");
+
+      expect(result.every(template => template.channel === "EMAIL")).toBe(true);
+      expect(result.every(template => template.publicId === `TP-${String(template.id).padStart(6, "0")}`)).toBe(true);
+    },
+  );
 });
