@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useBrand } from "@/contexts/BrandContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,8 +27,6 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-const LOGO_URL = "/manus-storage/logo-spcbrasil_2505cb7b.webp";
-
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/app", roles: ["SPC_ADMIN", "ORG_ADMIN", "REQUESTER"] },
   { icon: Megaphone, label: "Campanhas", path: "/app/campanhas", roles: ["SPC_ADMIN", "ORG_ADMIN", "REQUESTER"] },
@@ -54,15 +53,17 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const brand = useBrand();
+  const sidebarStorageKey = brand.isCredits ? "credits-sidebar-width" : SIDEBAR_WIDTH_KEY;
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    const saved = localStorage.getItem(sidebarStorageKey);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
 
   useEffect(() => {
-    localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
-  }, [sidebarWidth]);
+    localStorage.setItem(sidebarStorageKey, sidebarWidth.toString());
+  }, [sidebarStorageKey, sidebarWidth]);
 
   if (loading) {
     return <DashboardLayoutSkeleton />
@@ -81,7 +82,7 @@ export default function DashboardLayout({
             </p>
           </div>
           <Button
-            onClick={() => window.location.assign("/acesso")}
+            onClick={() => window.location.assign(brand.accessPath)}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
@@ -118,6 +119,7 @@ function DashboardLayoutContent({
   setSidebarWidth,
   sidebarWidth,
 }: DashboardLayoutContentProps) {
+  const brand = useBrand();
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
@@ -126,8 +128,18 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const role = user?.user.role;
   const visibleItems = menuItems.filter(item => role && item.roles.includes(role));
-  const activeMenuItem = visibleItems.find(item => item.path === location || (item.path !== "/app" && location.startsWith(item.path)));
+  const itemPath = (path: string) => brand.toPath(path);
+  const activeMenuItem = visibleItems.find(item => {
+    const path = itemPath(item.path);
+    return path === location || (item.path !== "/app" && location.startsWith(path));
+  });
   const isMobile = useIsMobile();
+  const handleLogout = brand.isCredits
+    ? async () => {
+        await logout();
+        setLocation(brand.accessPath, { replace: true });
+      }
+    : logout;
 
   useEffect(() => {
     if (isCollapsed) {
@@ -169,30 +181,30 @@ function DashboardLayoutContent({
     <>
       <a
         href="#conteudo-principal"
-        className="fixed left-4 top-3 z-[100] -translate-y-20 rounded-lg bg-[#003B7A] px-4 py-2 text-sm font-bold text-white shadow-lg transition-transform focus:translate-y-0"
+        className={`fixed left-4 top-3 z-[100] -translate-y-20 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-lg transition-transform focus:translate-y-0 ${brand.isCredits ? "bg-[#ED884A]" : "bg-[#003B7A]"}`}
       >
         Pular para o conteúdo principal
       </a>
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="icon"
-          className="border-r border-slate-200 bg-white"
+          className={`border-r ${brand.isCredits ? "border-white/10 bg-[#243871] text-white" : "border-slate-200 bg-white"}`}
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-20 justify-center border-b border-slate-100">
+          <SidebarHeader className={`h-20 justify-center border-b ${brand.isCredits ? "border-white/10 bg-[#243871]" : "border-slate-100"}`}>
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0 ${brand.isCredits ? "hover:bg-white/10" : "hover:bg-accent"}`}
                 aria-label={isCollapsed ? "Expandir navegação" : "Recolher navegação"}
                 aria-expanded={!isCollapsed}
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <PanelLeft className={`h-4 w-4 ${brand.isCredits ? "text-white/65" : "text-muted-foreground"}`} />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <img src={LOGO_URL} alt="SPC Brasil" className="h-auto w-20" />
-                  <span className="border-l border-slate-200 pl-2 text-xs font-bold text-[#004A99]">SPC Informa</span>
+                  <img src={brand.logoUrl} alt={brand.organizationName} className={`h-auto ${brand.isCredits ? "w-28" : "w-20"}`} />
+                  <span className={`border-l pl-2 text-xs font-bold ${brand.isCredits ? "border-white/20 text-white" : "border-slate-200 text-[#004A99]"}`}>{brand.isCredits ? "Informa" : brand.productName}</span>
                 </div>
               ) : null}
             </div>
@@ -201,18 +213,19 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
               {visibleItems.map(item => {
-                const isActive = location === item.path || (item.path !== "/app" && location.startsWith(item.path));
+                const path = itemPath(item.path);
+                const isActive = location === path || (item.path !== "/app" && location.startsWith(path));
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => setLocation(item.path)}
+                      onClick={() => setLocation(path)}
                       tooltip={item.label}
                       aria-current={isActive ? "page" : undefined}
-                      className="h-11 rounded-xl font-semibold text-slate-600 transition-all data-[active=true]:bg-blue-50 data-[active=true]:text-[#0066CC]"
+                      className={`h-11 rounded-xl font-semibold transition-all ${brand.isCredits ? "text-white/70 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/15 data-[active=true]:text-white" : "text-slate-600 data-[active=true]:bg-blue-50 data-[active=true]:text-[#0066CC]"}`}
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        className={`h-4 w-4 ${isActive ? (brand.isCredits ? "text-[#13BEE6]" : "text-primary") : ""}`}
                       />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -222,20 +235,20 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className={`p-3 ${brand.isCredits ? "bg-[#243871]" : ""}`}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button aria-label="Abrir menu da conta" className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
+                <button aria-label="Abrir menu da conta" className={`flex items-center gap-3 rounded-lg px-1 py-1 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${brand.isCredits ? "hover:bg-white/10" : "hover:bg-accent/50"}`}>
+                  <Avatar className={`h-9 w-9 border shrink-0 ${brand.isCredits ? "border-white/20" : ""}`}>
+                    <AvatarFallback className={`text-xs font-medium ${brand.isCredits ? "bg-white/10 text-white" : ""}`}>
                       {user?.user.name?.charAt(0).toUpperCase() ?? "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
+                    <p className={`text-sm font-medium truncate leading-none ${brand.isCredits ? "text-white" : ""}`}>
                       {user?.user.name || "-"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
+                    <p className={`text-xs truncate mt-1.5 ${brand.isCredits ? "text-white/55" : "text-muted-foreground"}`}>
                       {role ? roleLabels[role] : "-"}
                     </p>
                   </div>
@@ -243,7 +256,7 @@ function DashboardLayoutContent({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
@@ -254,7 +267,7 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
         <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize transition-colors ${brand.isCredits ? "hover:bg-[#13BEE6]/40" : "hover:bg-primary/20"} ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
@@ -278,21 +291,22 @@ function DashboardLayoutContent({
 
       <SidebarInset>
         {isMobile && (
-          <div className="flex border-b h-16 items-center justify-between bg-white/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+          <div className={`flex border-b h-16 items-center justify-between px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 ${brand.isCredits ? "border-white/10 bg-[#243871]/95 text-white" : "bg-white/95"}`}>
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
+              <SidebarTrigger className={`h-9 w-9 rounded-lg ${brand.isCredits ? "bg-white/10 text-white hover:bg-white/15" : "bg-background"}`} />
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
+                  <span className={`tracking-tight ${brand.isCredits ? "text-white" : "text-foreground"}`}>
                     {activeMenuItem?.label ?? "Menu"}
                   </span>
                 </div>
               </div>
             </div>
+            {brand.isCredits && <img src={brand.logoUrl} alt="Credits Brasil" className="h-auto w-24" />}
           </div>
         )}
-        {!isMobile && <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-7"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-400">{user?.organization.tradeName}</p><p className="mt-1 font-bold text-[#003B7A]">{activeMenuItem?.label ?? "SPC Informa"}</p></div><div role="status" className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Sessão protegida</div></header>}
-        <main id="conteudo-principal" tabIndex={-1} className="flex-1 bg-[#F5F7FA] p-4 sm:p-6 lg:p-7">{children}</main>
+        {!isMobile && <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-7"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-400">{user?.organization.tradeName}</p><p className={`mt-1 font-bold ${brand.isCredits ? "text-[#243871]" : "text-[#003B7A]"}`}>{activeMenuItem?.label ?? brand.productName}</p></div><div role="status" className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${brand.isCredits ? "bg-[#13BEE6]/10 text-[#243871]" : "bg-emerald-50 text-emerald-700"}`}><span className={`h-2 w-2 rounded-full ${brand.isCredits ? "bg-[#13BEE6]" : "bg-emerald-500"}`} /> Sessão protegida</div></header>}
+        <main id="conteudo-principal" tabIndex={-1} className={`flex-1 p-4 sm:p-6 lg:p-7 ${brand.isCredits ? "bg-[#F3F3F8]" : "bg-[#F5F7FA]"}`}>{children}</main>
       </SidebarInset>
     </>
   );

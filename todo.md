@@ -269,3 +269,18 @@
 - [x] Adicionar testes Vitest específicos da tela Gestão de Domínios
 - [x] Validar TypeScript, suíte Vitest, build e isolamento da alteração aos arquivos de Domínios (33 arquivos aprovados, 1 ignorado e build concluído)
 - [x] Substituir somente o placeholder da rota existente /app/dominios pela página dedicada, preservando caminho, proteção SPC_ADMIN e todas as demais rotas
+- [x] Auditar rotas, permissões, menus, autenticação e identidade visual atualmente vistos pelo usuário distribuidor contato@collectioncenter.com.br
+- [x] Analisar a identidade pública da Credits Brasil, incluindo logo, paleta, tipografia e linguagem visual utilizável no Credits Informa
+- [x] Definir uma URL alternativa para Credits Informa que compartilhe backend, banco e sessão sem modificar as URLs ou o comportamento do SPC Informa
+- [x] Criar uma camada de contexto de marca isolada para manter SPC Informa como padrão e aplicar Credits somente nas novas URLs
+- [x] Criar landing page Credits Informa responsiva baseada na identidade visual da Credits Brasil
+- [x] Criar tela de login Credits Informa com autenticação, recuperação de senha e 2FA existentes, sem permitir cadastro público
+- [x] Garantir que o login iniciado no contexto Credits permaneça nas URLs e na identidade Credits após autenticação
+- [x] Aplicar logo, paleta, nome e metadados Credits em toda a área autenticada alternativa sem exibir SPC Informa
+- [x] Exibir no contexto Credits somente páginas, menus e ações permitidos ao perfil ORG_ADMIN da organização DISTRIBUTOR, reutilizando as regras atuais
+- [x] Garantir que operações realizadas no Credits usem exatamente os mesmos procedimentos, banco, auditoria e escopo organizacional do sistema principal
+- [x] Preservar integralmente landing page, login, área autenticada, rotas, permissões e identidade visual do SPC Informa
+- [x] Adicionar regressões para isolamento de marca, URL alternativa, autenticação, navegação, permissões de Distribuidora e sincronização de dados
+- [x] Validar Credits Informa em desktop e celular, executar TypeScript, suíte Vitest e build de produção
+- [x] Revisar o diff final para comprovar que nenhuma lógica de negócio ou permissão do sistema principal foi alterada
+- [x] Garantir que landing page, login, recuperação, 2FA, painel e retornos do Credits Informa naveguem sempre na mesma aba, sem target=_blank ou abertura de novas janelas

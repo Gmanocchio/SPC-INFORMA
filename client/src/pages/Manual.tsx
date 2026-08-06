@@ -4,6 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBrand } from "@/contexts/BrandContext";
 import {
   filterManualChapters,
   getManualReadingMinutes,
@@ -35,6 +36,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
 export default function Manual() {
+  const brand = useBrand();
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
@@ -47,7 +49,11 @@ export default function Manual() {
     && Object.prototype.hasOwnProperty.call(MANUAL_ROLE_LABELS, user.user.role)
     && Object.prototype.hasOwnProperty.call(MANUAL_ORGANIZATION_LABELS, user.organization.type),
   );
-  const visibleChapters = useMemo(() => getVisibleManualChapters({ role, organizationType }), [organizationType, role]);
+  const sourceChapters = useMemo(() => getVisibleManualChapters({ role, organizationType }), [organizationType, role]);
+  const visibleChapters = useMemo(
+    () => sourceChapters.map(chapter => localizeManualChapter(chapter, brand.localizeText, brand.toPath)),
+    [brand, sourceChapters],
+  );
   const filteredChapters = useMemo(() => filterManualChapters(visibleChapters, search), [search, visibleChapters]);
   const progress = visibleChapters.length ? Math.round((readChapters.size / visibleChapters.length) * 100) : 0;
   const isSpcScope = role === "SPC_ADMIN" || organizationType === "SPC_BRASIL";
@@ -79,12 +85,12 @@ export default function Manual() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6" data-testid="manual-page">
-      <section className="relative overflow-hidden rounded-3xl bg-[#003B7A] px-5 py-8 text-white shadow-[0_24px_70px_-38px_rgba(0,59,122,.9)] sm:px-8 lg:px-10 lg:py-10">
+      <section className={`relative overflow-hidden rounded-3xl px-5 py-8 text-white shadow-[0_24px_70px_-38px_rgba(0,59,122,.9)] sm:px-8 lg:px-10 lg:py-10 ${brand.isCredits ? "bg-[#243871]" : "bg-[#003B7A]"}`}>
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-[#11A8E2]/20 blur-2xl" />
         <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[.14em] text-blue-50"><BookOpenCheck className="size-4 text-[#FFD84D]" /> Manual do sistema</div>
-            <h1 className="mt-5 max-w-4xl text-3xl font-black tracking-tight sm:text-4xl lg:text-[2.65rem]">Aprenda a usar o SPC Informa, do acesso à operação</h1>
+            <h1 className="mt-5 max-w-4xl text-3xl font-black tracking-tight sm:text-4xl lg:text-[2.65rem]">Aprenda a usar o {brand.productName}, do acesso à operação</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100 sm:text-base">Consulte instruções completas, exemplos práticos e telas ilustradas. O conteúdo é adaptado às funcionalidades disponíveis para seu perfil.</p>
             <div className="relative mt-6 max-w-3xl">
               <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
@@ -201,4 +207,39 @@ function ChapterCard({ chapter, index, organizationType, role, isRead, onToggleR
 function InfoCard({ title, icon, tone, children }: { title: string; icon: React.ReactNode; tone: "blue" | "green"; children: React.ReactNode }) {
   const styles = tone === "blue" ? "border-blue-100 bg-blue-50 text-[#003B7A]" : "border-emerald-100 bg-emerald-50 text-emerald-950";
   return <div className={`rounded-2xl border p-4 sm:p-5 ${styles}`}><div className="flex gap-3"><span className="mt-0.5 shrink-0">{icon}</span><div className="min-w-0"><h3 className="font-extrabold">{title}</h3><div className="mt-2 text-sm leading-6 opacity-80">{children}</div></div></div></div>;
+}
+
+function localizeManualChapter(
+  chapter: ManualChapter,
+  localizeText: (text: string) => string,
+  toPath: (path: string) => string,
+): ManualChapter {
+  const mapNotes = <T extends string>(notes: Partial<Record<T, string>> | undefined) => {
+    if (!notes) return undefined;
+    return Object.fromEntries(
+      Object.entries(notes).map(([key, value]) => [key, localizeText(value as string)]),
+    ) as Partial<Record<T, string>>;
+  };
+
+  return {
+    ...chapter,
+    title: localizeText(chapter.title),
+    shortTitle: localizeText(chapter.shortTitle),
+    summary: localizeText(chapter.summary),
+    purpose: localizeText(chapter.purpose),
+    route: chapter.route ? toPath(chapter.route) : undefined,
+    routeLabel: chapter.routeLabel ? localizeText(chapter.routeLabel) : undefined,
+    prerequisites: chapter.prerequisites.map(localizeText),
+    steps: chapter.steps.map(step => ({
+      ...step,
+      title: localizeText(step.title),
+      description: localizeText(step.description),
+      example: step.example ? localizeText(step.example) : undefined,
+      warning: step.warning ? localizeText(step.warning) : undefined,
+    })),
+    bestPractices: chapter.bestPractices.map(localizeText),
+    profileNotes: mapNotes<ManualOrganizationType>(chapter.profileNotes),
+    roleNotes: mapNotes<ManualRole>(chapter.roleNotes),
+    keywords: chapter.keywords.map(localizeText),
+  };
 }

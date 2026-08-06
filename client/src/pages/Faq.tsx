@@ -3,6 +3,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBrand } from "@/contexts/BrandContext";
 import {
   FAQ_CATEGORIES,
   filterFaqItems,
@@ -65,6 +66,7 @@ const organizationLabels: Record<FaqOrganizationType, string> = {
 };
 
 export default function Faq() {
+  const brand = useBrand();
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
@@ -72,9 +74,19 @@ export default function Faq() {
 
   const role = (user?.user.role ?? "REQUESTER") as FaqRole;
   const organizationType = (user?.organization.type ?? "CREDITOR") as FaqOrganizationType;
-  const visibleItems = useMemo(
+  const sourceItems = useMemo(
     () => getVisibleFaqItems({ role, organizationType }),
     [organizationType, role],
+  );
+  const visibleItems = useMemo(
+    () => sourceItems.map(item => ({
+      ...item,
+      question: brand.localizeText(item.question),
+      answer: brand.localizeText(item.answer),
+      steps: item.steps?.map(brand.localizeText),
+      note: item.note ? brand.localizeText(item.note) : undefined,
+    })),
+    [brand, sourceItems],
   );
   const availableCategories = useMemo(
     () => FAQ_CATEGORIES.filter(item => visibleItems.some(question => question.category === item.id)),
@@ -94,7 +106,7 @@ export default function Faq() {
 
   return (
     <div className="mx-auto max-w-[1480px] space-y-6" data-testid="faq-page">
-      <section className="relative overflow-hidden rounded-3xl bg-[#003B7A] px-5 py-8 text-white shadow-[0_24px_70px_-38px_rgba(0,59,122,.9)] sm:px-8 lg:px-10 lg:py-10">
+      <section className={`relative overflow-hidden rounded-3xl px-5 py-8 text-white shadow-[0_24px_70px_-38px_rgba(0,59,122,.9)] sm:px-8 lg:px-10 lg:py-10 ${brand.isCredits ? "bg-[#243871]" : "bg-[#003B7A]"}`}>
         <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#11A8E2]/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-[#FFD84D]/10 blur-2xl" />
         <div className="relative grid gap-8 lg:grid-cols-[1fr_340px] lg:items-end">
@@ -216,7 +228,7 @@ export default function Faq() {
                           )}
                           {item.visual && <FaqVisual type={item.visual} />}
                           {item.route && (
-                            <Button type="button" variant="outline" className="bg-white text-[#004A99]" onClick={() => navigate(item.route!)}>
+                            <Button type="button" variant="outline" className="bg-white text-[#004A99]" onClick={() => navigate(brand.toPath(item.route!))}>
                               {item.routeLabel ?? "Abrir funcionalidade"} <ArrowRight className="size-4" />
                             </Button>
                           )}
@@ -328,7 +340,8 @@ function UserVisual() {
 }
 
 function TemplateVisual() {
-  return <div className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-700">Conteúdo do SMS</p><p className="mt-1 text-[10px] text-slate-400">Insira variáveis da planilha</p></div><Badge variant="outline">112/164</Badge></div><div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-5 text-slate-600">SPC INFORMA: Olá {"{{nome_cliente}}"}, consulte sua comunicação em {"{{link}}"}.</div><div className="mt-3 flex flex-wrap gap-2"><Badge className="bg-blue-50 text-[#0066CC] hover:bg-blue-50">{"{{nome_cliente}}"}</Badge><Badge className="bg-blue-50 text-[#0066CC] hover:bg-blue-50">{"{{link}}"}</Badge></div></div>;
+  const brand = useBrand();
+  return <div className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-700">Conteúdo do SMS</p><p className="mt-1 text-[10px] text-slate-400">Insira variáveis da planilha</p></div><Badge variant="outline">112/164</Badge></div><div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-5 text-slate-600">{brand.isCredits ? "CREDITS INFORMA" : "SPC INFORMA"}: Olá {"{{nome_cliente}}"}, consulte sua comunicação em {"{{link}}"}.</div><div className="mt-3 flex flex-wrap gap-2"><Badge className="bg-blue-50 text-[#0066CC] hover:bg-blue-50">{"{{nome_cliente}}"}</Badge><Badge className="bg-blue-50 text-[#0066CC] hover:bg-blue-50">{"{{link}}"}</Badge></div></div>;
 }
 
 function PricingVisual() {
@@ -341,7 +354,8 @@ function BrokerVisual() {
 }
 
 function ApiKeyVisual() {
-  return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-white text-amber-700"><KeyRound className="size-5" /></div><div><p className="font-bold text-amber-950">Copie o segredo agora</p><p className="text-xs text-amber-800">Ele não será exibido novamente.</p></div></div><div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-white p-3"><code className="min-w-0 flex-1 truncate text-xs text-slate-600">spci_live_••••••••••••A7K9</code><Badge variant="outline">Copiar</Badge></div></div>;
+  const brand = useBrand();
+  return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-white text-amber-700"><KeyRound className="size-5" /></div><div><p className="font-bold text-amber-950">Copie o segredo agora</p><p className="text-xs text-amber-800">Ele não será exibido novamente.</p></div></div><div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-white p-3"><code className="min-w-0 flex-1 truncate text-xs text-slate-600">{brand.isCredits ? "credits" : "spci"}_live_••••••••••••A7K9</code><Badge variant="outline">Copiar</Badge></div></div>;
 }
 
 function VisualField({ label, value }: { label: string; value: string }) {

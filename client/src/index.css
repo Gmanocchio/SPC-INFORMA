@@ -79,6 +79,27 @@
   --sidebar-ring: oklch(0.623 0.214 259.815);
 }
 
+.credits-brand {
+  --primary: oklch(0.4 0.112 266.2);
+  --primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.75 0.147 217.7);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --chart-1: oklch(0.4 0.112 266.2);
+  --chart-2: oklch(0.75 0.147 217.7);
+  --chart-3: oklch(0.71 0.15 45.3);
+  --chart-4: oklch(0.5 0.12 266.2);
+  --chart-5: oklch(0.28 0.12 270.4);
+  --background: oklch(0.975 0.006 276.6);
+  --foreground: oklch(0.27 0.08 266.2);
+  --ring: oklch(0.71 0.15 45.3);
+  --sidebar: oklch(0.31 0.1 266.2);
+  --sidebar-foreground: oklch(0.98 0.005 270);
+  --sidebar-accent: oklch(0.39 0.11 266.2);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.75 0.147 217.7);
+}
+
 .dark {
   --primary: var(--color-blue-700);
   --primary-foreground: var(--color-blue-50);
@@ -179,6 +200,16 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+.credits-brand body {
+  font-family: "Montserrat", "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+.credits-dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(to bottom, black, transparent 92%);
 }
 
 ::selection {
