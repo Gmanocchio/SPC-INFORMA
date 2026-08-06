@@ -8,6 +8,7 @@ import {
   BrandProvider,
   CREDITS_ORGANIZATION_ID,
   isCreditsOrganizationAdmin,
+  isCreditsPortalUser,
   isCreditsPath,
 } from "../client/src/contexts/BrandContext";
 import CreditsHome from "../client/src/pages/CreditsHome";
@@ -57,6 +58,18 @@ describe("Credits Informa", () => {
       user: { role: "ORG_ADMIN" },
       organization: { id: 1, type: "DISTRIBUTOR", tradeName: "Outra organização" },
     })).toBe(false);
+    expect(isCreditsPortalUser({
+      user: { role: "REQUESTER" },
+      organization: { id: 120001, type: "CREDITOR", status: "ACTIVE", parentOrganizationId: 1, linkedToOrganizationId: CREDITS_ORGANIZATION_ID },
+    })).toBe(true);
+    expect(isCreditsPortalUser({
+      user: { role: "ORG_ADMIN" },
+      organization: { id: 120001, type: "CREDITOR", status: "ACTIVE", parentOrganizationId: 1, linkedToOrganizationId: CREDITS_ORGANIZATION_ID },
+    })).toBe(false);
+    expect(isCreditsPortalUser({
+      user: { role: "REQUESTER" },
+      organization: { id: 120001, type: "CREDITOR", status: "ACTIVE", parentOrganizationId: 1, linkedToOrganizationId: 70000 },
+    })).toBe(false);
   });
 
   it("renderiza a landing Credits sem referências ao SPC Informa e sem abrir novas abas", () => {
@@ -105,6 +118,8 @@ describe("Credits Informa", () => {
     expect(appSource).not.toContain('path="/credits-informa/app/brokers"');
     expect(appSource).not.toContain('path="/credits-informa/app/dominios"');
     expect(appSource).toContain("<ProtectedPage creditsOnly>");
+    expect(appSource).toContain("<ProtectedPage creditsOnly adminOnly><Users /></ProtectedPage>");
+    expect(appSource).toContain('user?.user.role === "REQUESTER" ? brand.appPath : null');
   });
 
   it("renderiza o painel Credits com o menu real de ORG_ADMIN e sem módulos exclusivos do SPC", () => {

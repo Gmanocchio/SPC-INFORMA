@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, like, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { organizations, users } from "../drizzle/schema";
@@ -47,6 +47,21 @@ type UserInput = {
   role: "SPC_ADMIN" | "ORG_ADMIN" | "REQUESTER";
 };
 
+type OrganizationScopeTarget = Pick<typeof organizations.$inferSelect, "id" | "parentOrganizationId" | "linkedToOrganizationId" | "type" | "status">;
+
+export function isManagedChildOrganization(actor: Actor, target: OrganizationScopeTarget) {
+  return actor.role === "ORG_ADMIN"
+    && target.type === "CREDITOR"
+    && target.status === "ACTIVE"
+    && (target.linkedToOrganizationId ?? target.parentOrganizationId) === actor.organizationId;
+}
+
+export function canAssignUserToOrganization(actor: Actor, target: OrganizationScopeTarget, role: UserInput["role"]) {
+  if (actor.role === "SPC_ADMIN") return true;
+  if (actor.role !== "ORG_ADMIN" || role === "SPC_ADMIN") return false;
+  return target.id === actor.organizationId || (role === "REQUESTER" && isManagedChildOrganization(actor, target));
+}
+
 async function requireDb() {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
@@ -92,8 +107,8 @@ export async function listOrganizations(actor: Actor, input: { search?: string; 
   if (actor.role === "SPC_ADMIN") {
     return db.select(projection).from(organizations).where(and(isNull(organizations.deletedAt), input.type ? eq(organizations.type, input.type) : undefined, textFilter)).orderBy(desc(organizations.createdAt)).limit(200);
   }
-  // Para CDL_ADMIN e DISTRIBUTOR_ADMIN: retornar apenas a propria organizacao e suas filhas (credores)
-  return db.select(projection).from(organizations).where(and(isNull(organizations.deletedAt), or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId)), input.type ? eq(organizations.type, input.type) : undefined, textFilter)).orderBy(desc(organizations.createdAt)).limit(200);
+  // Para administradores de CDL e Distribuidora: retornar a própria organização e credores diretamente vinculados.
+  return db.select(projection).from(organizations).where(and(isNull(organizations.deletedAt), or(eq(organizations.id, actor.organizationId), eq(organizations.linkedToOrganizationId, actor.organizationId), and(isNull(organizations.linkedToOrganizationId), eq(organizations.parentOrganizationId, actor.organizationId))), input.type ? eq(organizations.type, input.type) : undefined, textFilter)).orderBy(desc(organizations.createdAt)).limit(200);
 }
 
 export async function createOrganization(actor: Actor, input: OrganizationInput) {
@@ -170,9 +185,18 @@ export async function uploadOrganizationLogo(actor: Actor, id: number, mimeType:
   return { logoUrl: stored.url };
 }
 
-export async function listUsers(actor: Actor, input: { organizationId?: number; search?: string }) {
+export async function listUsers(actor: Actor, input: { organizationId?: number; search?: string; includeManagedOrganizations?: boolean }) {
   const db = await requireDb();
-  const organizationId = actor.role === "SPC_ADMIN" ? input.organizationId : actor.organizationId;
+  let organizationScope = actor.role === "SPC_ADMIN"
+    ? (input.organizationId ? eq(users.organizationId, input.organizationId) : undefined)
+    : eq(users.organizationId, actor.organizationId);
+  if (actor.role === "ORG_ADMIN" && input.includeManagedOrganizations) {
+    const managedOrganizations = await db.select({ id: organizations.id }).from(organizations).where(and(isNull(organizations.deletedAt), eq(organizations.type, "CREDITOR"), eq(organizations.status, "ACTIVE"), or(eq(organizations.linkedToOrganizationId, actor.organizationId), and(isNull(organizations.linkedToOrganizationId), eq(organizations.parentOrganizationId, actor.organizationId))))).limit(200);
+    const managedOrganizationIds = managedOrganizations.map(organization => organization.id);
+    organizationScope = managedOrganizationIds.length
+      ? or(eq(users.organizationId, actor.organizationId), and(inArray(users.organizationId, managedOrganizationIds), eq(users.role, "REQUESTER")))
+      : eq(users.organizationId, actor.organizationId);
+  }
   const search = input.search?.trim();
   return db.select({
     id: users.id,
@@ -186,13 +210,12 @@ export async function listUsers(actor: Actor, input: { organizationId?: number; 
     mustChangePassword: users.mustChangePassword,
     lastSignedIn: users.lastSignedIn,
     createdAt: users.createdAt,
-  }).from(users).where(and(isNull(users.deletedAt), organizationId ? eq(users.organizationId, organizationId) : undefined, search ? or(like(users.name, `%${search}%`), like(users.email, `%${search}%`), like(users.cpf, `%${normalizeCpf(search)}%`)) : undefined)).orderBy(desc(users.createdAt)).limit(200);
+  }).from(users).where(and(isNull(users.deletedAt), organizationScope, search ? or(like(users.name, `%${search}%`), like(users.email, `%${search}%`), like(users.cpf, `%${normalizeCpf(search)}%`)) : undefined)).orderBy(desc(users.createdAt)).limit(200);
 }
 
 export async function createUser(actor: Actor, input: UserInput) {
   const targetOrganization = await findOrganization(input.organizationId);
-  if (!targetOrganization || !canManageOrganization(actor, targetOrganization)) throw new TRPCError({ code: "FORBIDDEN", message: "Organização fora do seu escopo." });
-  if (actor.role !== "SPC_ADMIN" && (input.organizationId !== actor.organizationId || input.role === "SPC_ADMIN")) {
+  if (!targetOrganization || !canAssignUserToOrganization(actor, targetOrganization, input.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Perfil ou organização não permitido para este administrador." });
   }
   if (input.role === "SPC_ADMIN" && targetOrganization.type !== "SPC_BRASIL") {
@@ -221,7 +244,9 @@ export async function createUser(actor: Actor, input: UserInput) {
 export async function updateUser(actor: Actor, id: number, input: { name?: string; email?: string; phone?: string | null; role?: UserInput["role"]; status?: "INVITED" | "ACTIVE" | "INACTIVE" | "LOCKED" }) {
   const db = await requireDb();
   const target = (await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1))[0];
-  if (!target || (actor.role !== "SPC_ADMIN" && target.organizationId !== actor.organizationId)) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado no seu escopo." });
+  const targetOrganization = target ? await findOrganization(target.organizationId) : undefined;
+  const targetRole = input.role ?? target?.role ?? "REQUESTER";
+  if (!target || !targetOrganization || !canAssignUserToOrganization(actor, targetOrganization, targetRole) || (isManagedChildOrganization(actor, targetOrganization) && target.role !== "REQUESTER")) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado no seu escopo." });
   if (id === actor.id && (input.role || input.status === "INACTIVE")) throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode reduzir o próprio acesso ou desativar a própria conta." });
   if (actor.role !== "SPC_ADMIN" && input.role === "SPC_ADMIN") throw new TRPCError({ code: "FORBIDDEN", message: "Perfil não permitido." });
   if (input.role === "SPC_ADMIN") {

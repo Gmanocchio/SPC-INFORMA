@@ -284,3 +284,10 @@
 - [x] Validar Credits Informa em desktop e celular, executar TypeScript, suíte Vitest e build de produção
 - [x] Revisar o diff final para comprovar que nenhuma lógica de negócio ou permissão do sistema principal foi alterada
 - [x] Garantir que landing page, login, recuperação, 2FA, painel e retornos do Credits Informa naveguem sempre na mesma aba, sem target=_blank ou abertura de novas janelas
+- [x] Auditar o formulário e o procedimento atuais de criação de usuário por ORG_ADMIN da distribuidora Credits
+- [x] Listar no cadastro Credits somente organizações ativas vinculadas à distribuidora autenticada
+- [x] Exigir a escolha de uma organização ao criar usuário com perfil Solicitante no contexto Credits
+- [x] Persistir o novo Solicitante na organização escolhida sem ampliar as permissões atuais do perfil REQUESTER
+- [x] Preservar integralmente o cadastro de usuários e as permissões nos demais contextos e perfis
+- [x] Adicionar regressões de interface, autorização e isolamento organizacional para o novo seletor
+- [x] Validar a correção com TypeScript, suíte Vitest, build e interface responsiva

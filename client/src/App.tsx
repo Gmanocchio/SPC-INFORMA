@@ -6,7 +6,7 @@ import { useAuth } from "./_core/hooks/useAuth";
 import DashboardLayout from "./components/DashboardLayout";
 import { DashboardLayoutSkeleton } from "./components/DashboardLayoutSkeleton";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { BrandProvider, isCreditsOrganizationAdmin, useBrand } from "./contexts/BrandContext";
+import { BrandProvider, isCreditsPortalUser, useBrand } from "./contexts/BrandContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { protectedRouteDecision } from "./lib/route-access";
 
@@ -29,19 +29,20 @@ const RecoverPassword = lazy(() => import("./pages/RecoverPassword"));
 const Templates = lazy(() => import("./pages/Templates"));
 const Users = lazy(() => import("./pages/Users"));
 
-function ProtectedPage({ children, spcOnly = false, creditsOnly = false }: { children: ReactNode; spcOnly?: boolean; creditsOnly?: boolean }) {
+function ProtectedPage({ children, spcOnly = false, creditsOnly = false, adminOnly = false }: { children: ReactNode; spcOnly?: boolean; creditsOnly?: boolean; adminOnly?: boolean }) {
   const brand = useBrand();
   const { user, loading } = useAuth();
   const [, navigate] = useLocation();
   const access = protectedRouteDecision({ loading, user, spcOnly });
-  const creditsScopeRedirect = creditsOnly && !loading && user && !isCreditsOrganizationAdmin(user) ? "/app" : null;
-  const redirectPath = creditsScopeRedirect ?? (access.status === "redirect" ? brand.toPath(access.path) : null);
+  const creditsScopeRedirect = creditsOnly && !loading && user && !isCreditsPortalUser(user) ? "/app" : null;
+  const adminScopeRedirect = adminOnly && !loading && user?.user.role === "REQUESTER" ? brand.appPath : null;
+  const redirectPath = creditsScopeRedirect ?? adminScopeRedirect ?? (access.status === "redirect" ? brand.toPath(access.path) : null);
 
   useEffect(() => {
     if (redirectPath) navigate(redirectPath, { replace: true });
   }, [navigate, redirectPath]);
 
-  if (access.status !== "allow") {
+  if (access.status !== "allow" || redirectPath) {
     return <DashboardLayoutSkeleton />;
   }
   return <DashboardLayout>{children}</DashboardLayout>;
@@ -55,7 +56,7 @@ function PasswordChangeRoute() {
   useEffect(() => {
     if (loading) return;
     if (!user) navigate(brand.accessPath, { replace: true });
-    else if (brand.isCredits && !isCreditsOrganizationAdmin(user)) navigate("/app", { replace: true });
+    else if (brand.isCredits && !isCreditsPortalUser(user)) navigate("/app", { replace: true });
     else if (!user.user.mustChangePassword) navigate(brand.appPath, { replace: true });
   }, [brand, loading, navigate, user]);
 
@@ -72,10 +73,10 @@ function Router() {
       <Route path="/credits-informa/app/primeiro-acesso" component={PasswordChangeRoute} />
       <Route path="/credits-informa/app">{() => <ProtectedPage creditsOnly><Dashboard /></ProtectedPage>}</Route>
       <Route path="/credits-informa/app/campanhas">{() => <ProtectedPage creditsOnly><Campaigns /></ProtectedPage>}</Route>
-      <Route path="/credits-informa/app/empresas">{() => <ProtectedPage creditsOnly><Organizations /></ProtectedPage>}</Route>
-      <Route path="/credits-informa/app/usuarios">{() => <ProtectedPage creditsOnly><Users /></ProtectedPage>}</Route>
-      <Route path="/credits-informa/app/precificacao">{() => <ProtectedPage creditsOnly><Pricing /></ProtectedPage>}</Route>
-      <Route path="/credits-informa/app/chaves-api">{() => <ProtectedPage creditsOnly><ApiKeys /></ProtectedPage>}</Route>
+      <Route path="/credits-informa/app/empresas">{() => <ProtectedPage creditsOnly adminOnly><Organizations /></ProtectedPage>}</Route>
+      <Route path="/credits-informa/app/usuarios">{() => <ProtectedPage creditsOnly adminOnly><Users /></ProtectedPage>}</Route>
+      <Route path="/credits-informa/app/precificacao">{() => <ProtectedPage creditsOnly adminOnly><Pricing /></ProtectedPage>}</Route>
+      <Route path="/credits-informa/app/chaves-api">{() => <ProtectedPage creditsOnly adminOnly><ApiKeys /></ProtectedPage>}</Route>
       <Route path="/credits-informa/app/faq">{() => <ProtectedPage creditsOnly><Faq /></ProtectedPage>}</Route>
       <Route path="/credits-informa/app/manual">{() => <ProtectedPage creditsOnly><Manual /></ProtectedPage>}</Route>
       <Route path="/" component={Home} />

@@ -89,6 +89,25 @@ export function isCreditsOrganizationAdmin(user: {
   return isCreditsOrganization(user) && user?.user?.role === "ORG_ADMIN";
 }
 
+export function isCreditsPortalUser(user: {
+  user?: { role?: string };
+  organization?: {
+    id?: number;
+    type?: string;
+    status?: string;
+    parentOrganizationId?: number | null;
+    linkedToOrganizationId?: number | null;
+  };
+} | null | undefined) {
+  if (isCreditsOrganizationAdmin(user)) return true;
+  return Boolean(
+    user?.user?.role === "REQUESTER"
+    && user.organization?.type === "CREDITOR"
+    && user.organization.status === "ACTIVE"
+    && (user.organization.linkedToOrganizationId ?? user.organization.parentOrganizationId) === CREDITS_ORGANIZATION_ID,
+  );
+}
+
 export function BrandProvider({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const brand = useMemo(() => isCreditsPath(location) ? creditsBrand : spcBrand, [location]);

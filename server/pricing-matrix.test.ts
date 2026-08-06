@@ -99,8 +99,10 @@ describe("matriz de precificação por credor e canal", () => {
 
   it("bloqueia SPC_BRASIL em admin.organizations.list para nao-SPC_ADMIN mas permite em pricing.organizations", () => {
     const adminService = readFileSync(resolve(process.cwd(), "server/admin-service.ts"), "utf8");
-    // SPC_BRASIL nao deve aparecer em admin.organizations.list para nao-SPC_ADMIN
-    expect(adminService).toContain('or(eq(organizations.id, actor.organizationId), eq(organizations.parentOrganizationId, actor.organizationId))');
+    // SPC_BRASIL nao deve aparecer em admin.organizations.list para nao-SPC_ADMIN; somente a própria organização e credores vinculados.
+    expect(adminService).toContain('eq(organizations.id, actor.organizationId)');
+    expect(adminService).toContain('eq(organizations.linkedToOrganizationId, actor.organizationId)');
+    expect(adminService).toContain('and(isNull(organizations.linkedToOrganizationId), eq(organizations.parentOrganizationId, actor.organizationId))');
     // Mas deve aparecer em commercial.pricing.organizations
     const pricingService = readFileSync(resolve(process.cwd(), "server/pricing-service.ts"), "utf8");
     expect(pricingService).toContain('listPricingOrganizations');

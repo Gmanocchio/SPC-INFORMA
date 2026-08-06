@@ -2,7 +2,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isCreditsOrganizationAdmin, useBrand } from "@/contexts/BrandContext";
+import { isCreditsPortalUser, useBrand } from "@/contexts/BrandContext";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
@@ -22,7 +22,7 @@ export default function Access() {
   const me = trpc.auth.me.useQuery(undefined, { retry: false });
   useEffect(() => {
     if (!me.data?.user) return;
-    if (brand.isCredits && !isCreditsOrganizationAdmin(me.data)) {
+    if (brand.isCredits && !isCreditsPortalUser(me.data)) {
       navigate("/app", { replace: true });
       return;
     }
@@ -39,7 +39,7 @@ export default function Access() {
     onSuccess: async result => {
       await utils.auth.me.invalidate();
       const session = await utils.auth.me.fetch();
-      if (brand.isCredits && !isCreditsOrganizationAdmin(session)) {
+      if (brand.isCredits && !isCreditsPortalUser(session)) {
         navigate("/app", { replace: true });
         return;
       }
