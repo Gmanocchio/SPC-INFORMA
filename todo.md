@@ -298,3 +298,9 @@
 - [x] Preservar integralmente login, rotas, menus, identidade e permissões do SPC Informa principal
 - [x] Adicionar ou fortalecer regressões do fluxo white label para REQUESTER de organização credora vinculada
 - [x] Validar a correção com TypeScript, suíte Vitest, build e interface responsiva
+- [x] Auditar o favicon estático e o favicon dinâmico atualmente aplicado pelos contextos SPC e Credits
+- [x] Garantir que qualquer URL do SPC Informa aplique explicitamente o símbolo oficial do SPC Brasil na aba
+- [x] Manter o símbolo Credits exclusivamente nas URLs do namespace /credits-informa
+- [x] Restaurar corretamente o favicon SPC ao navegar do Credits para o sistema principal na mesma aba
+- [x] Adicionar regressões para carregamento inicial e alternância de favicon entre SPC e Credits
+- [x] Validar a correção com TypeScript, suíte Vitest, build e capturas das duas marcas

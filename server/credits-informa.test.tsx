@@ -77,6 +77,7 @@ afterEach(() => {
   cleanup();
   window.history.replaceState({}, "", "/");
   document.documentElement.classList.remove("credits-brand");
+  document.getElementById("runtime-brand-favicon")?.remove();
 });
 
 describe("Credits Informa", () => {
@@ -124,10 +125,31 @@ describe("Credits Informa", () => {
     expect(container.textContent).not.toContain("SPC Informa");
     expect(document.documentElement.classList.contains("credits-brand")).toBe(true);
     expect(document.title).toBe("Credits Informa");
+    expect(document.querySelector<HTMLLinkElement>("#runtime-brand-favicon")?.href).toContain("credits-symbol_343e47e1.png");
 
     const links = Array.from(container.querySelectorAll("a"));
     expect(links.some(link => link.getAttribute("href") === "/credits-informa/acesso")).toBe(true);
     expect(links.every(link => link.getAttribute("target") !== "_blank")).toBe(true);
+  });
+
+  it("restaura explicitamente o favicon SPC ao sair do namespace Credits na mesma aba", async () => {
+    const { rerender } = render(<BrandProvider><div>Marca ativa</div></BrandProvider>);
+
+    await waitFor(() => expect(document.querySelector<HTMLLinkElement>("#runtime-brand-favicon")?.href).toContain("credits-symbol_343e47e1.png"));
+
+    window.history.replaceState({}, "", "/app");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    rerender(<BrandProvider><div>Marca ativa</div></BrandProvider>);
+
+    await waitFor(() => {
+      expect(document.title).toBe("SPC Informa");
+      expect(document.querySelector<HTMLLinkElement>("#runtime-brand-favicon")?.href).toContain("logo-spcbrasil_2505cb7b.webp");
+      expect(document.querySelectorAll("link[rel='icon']")).toHaveLength(1);
+    });
+
+    const indexSource = projectFile("client/index.html");
+    expect(indexSource).toContain('id="runtime-brand-favicon"');
+    expect(indexSource).toContain('href="/manus-storage/logo-spcbrasil_2505cb7b.webp"');
   });
 
   it("mantém as rotas SPC existentes e cria apenas as rotas permitidas ao administrador Credits", () => {

@@ -32,6 +32,7 @@ const spcBrand: BrandContextValue = {
   productName: "SPC Informa",
   organizationName: "SPC Brasil",
   logoUrl: SPC_LOGO_URL,
+  symbolUrl: SPC_LOGO_URL,
   homePath: "/",
   accessPath: "/acesso",
   recoveryPath: "/recuperar-senha",
@@ -127,15 +128,11 @@ export function BrandProvider({ children }: { children: ReactNode }) {
 
     const faviconId = "runtime-brand-favicon";
     const existingFavicon = document.getElementById(faviconId);
-    if (brand.symbolUrl) {
-      const favicon = existingFavicon instanceof HTMLLinkElement
-        ? existingFavicon
-        : Object.assign(document.createElement("link"), { id: faviconId, rel: "icon" });
-      favicon.href = brand.symbolUrl;
-      if (!favicon.isConnected) document.head.appendChild(favicon);
-    } else {
-      existingFavicon?.remove();
-    }
+    const favicon = existingFavicon instanceof HTMLLinkElement
+      ? existingFavicon
+      : Object.assign(document.createElement("link"), { id: faviconId, rel: "icon" });
+    favicon.href = brand.symbolUrl ?? brand.logoUrl;
+    if (!favicon.isConnected) document.head.appendChild(favicon);
   }, [brand]);
 
   return <BrandContext.Provider value={brand}>{children}</BrandContext.Provider>;
