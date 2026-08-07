@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardLayout from "../client/src/components/DashboardLayout";
 import {
   BrandProvider,
@@ -11,26 +12,64 @@ import {
   isCreditsPortalUser,
   isCreditsPath,
 } from "../client/src/contexts/BrandContext";
+import Access from "../client/src/pages/Access";
 import CreditsHome from "../client/src/pages/CreditsHome";
 
-const mocks = vi.hoisted(() => ({ logout: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  accessMe: null as any,
+  logout: vi.fn(async () => undefined),
+  session: null as any,
+}));
 
 vi.mock("@/_core/hooks/useAuth", () => ({
   useAuth: () => ({
     loading: false,
     logout: mocks.logout,
-    user: {
-      user: { id: 90002, name: "Administrador Credits", role: "ORG_ADMIN", mustChangePassword: false },
-      organization: { id: 90002, tradeName: "Credits Brasil", type: "DISTRIBUTOR" },
-    },
+    user: mocks.session,
   }),
 }));
 
 vi.mock("@/hooks/useMobile", () => ({ useIsMobile: () => false }));
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    useUtils: () => ({ auth: { me: { invalidate: vi.fn(), fetch: vi.fn(async () => mocks.accessMe) } } }),
+    auth: {
+      me: { useQuery: () => ({ data: mocks.accessMe }) },
+      login: { useMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }) },
+      verifyTwoFactor: { useMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }) },
+    },
+  },
+}));
 
 const projectFile = (path: string) => readFileSync(`${process.cwd()}/${path}`, "utf8");
 
+const creditsAdminSession = {
+  user: { id: 90002, name: "Administrador Credits", role: "ORG_ADMIN", mustChangePassword: false },
+  organization: { id: 90002, tradeName: "Credits Brasil", type: "DISTRIBUTOR", status: "ACTIVE", parentOrganizationId: 1, linkedToOrganizationId: null },
+};
+
+const creditsRequesterSession = {
+  user: { id: 120900, name: "Solicitante Credor", role: "REQUESTER", mustChangePassword: false },
+  organization: { id: 120001, tradeName: "Organização Credora", type: "CREDITOR", status: "ACTIVE", parentOrganizationId: 1, linkedToOrganizationId: CREDITS_ORGANIZATION_ID },
+};
+
+beforeAll(() => {
+  class ResizeObserverMock {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(globalThis, "ResizeObserver", { value: ResizeObserverMock, configurable: true });
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { value: vi.fn(), configurable: true });
+  Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", { value: () => false, configurable: true });
+  Object.defineProperty(HTMLElement.prototype, "setPointerCapture", { value: vi.fn(), configurable: true });
+  Object.defineProperty(HTMLElement.prototype, "releasePointerCapture", { value: vi.fn(), configurable: true });
+});
+
 beforeEach(() => {
+  mocks.accessMe = null;
+  mocks.session = creditsAdminSession;
+  mocks.logout.mockClear();
   window.history.replaceState({}, "", "/credits-informa");
 });
 
@@ -143,6 +182,49 @@ describe("Credits Informa", () => {
     expect(screen.queryByText("Brokers")).toBeNull();
     expect(screen.queryByText("Gestão de Domínios")).toBeNull();
     expect(container.textContent).not.toContain("SPC Informa");
+  });
+
+  it("mantém o REQUESTER credor no white label com somente Dashboard, Campanhas, FAQ e Manual", async () => {
+    const user = userEvent.setup();
+    mocks.session = creditsRequesterSession;
+    window.history.replaceState({}, "", "/credits-informa/app");
+
+    const { container } = render(
+      <BrandProvider>
+        <DashboardLayout><div>Painel do solicitante</div></DashboardLayout>
+      </BrandProvider>,
+    );
+
+    expect(screen.getByAltText("Credits Brasil")).toBeTruthy();
+    expect(screen.getByText("Solicitante")).toBeTruthy();
+    expect(screen.getByText("Painel do solicitante")).toBeTruthy();
+    for (const label of ["Dashboard", "Campanhas", "FAQ", "Manual"]) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    for (const label of ["Empresas", "Usuários", "Templates", "Precificação", "Brokers", "Chaves de API", "Gestão de Domínios"]) expect(screen.queryByText(label)).toBeNull();
+    expect(container.textContent).not.toContain("SPC Informa");
+
+    await user.click(screen.getByRole("button", { name: "Campanhas" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/credits-informa/app/campanhas"));
+
+    await user.click(screen.getByRole("button", { name: "Abrir menu da conta" }));
+    await user.click(await screen.findByText("Sair com segurança"));
+    await waitFor(() => expect(window.location.pathname).toBe("/credits-informa/acesso"));
+    expect(mocks.logout).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [false, "/credits-informa/app"],
+    [true, "/credits-informa/app/primeiro-acesso"],
+  ])("redireciona o REQUESTER após autenticação para o destino Credits correto", async (mustChangePassword, expectedPath) => {
+    mocks.accessMe = {
+      ...creditsRequesterSession,
+      user: { ...creditsRequesterSession.user, mustChangePassword },
+    };
+    window.history.replaceState({}, "", "/credits-informa/acesso");
+
+    render(<BrandProvider><Access /></BrandProvider>);
+
+    await waitFor(() => expect(window.location.pathname).toBe(expectedPath));
+    expect(document.title).toBe("Credits Informa");
   });
 
   it("reutiliza autenticação, sessão e tRPC existentes sem criar API ou lógica paralela", () => {

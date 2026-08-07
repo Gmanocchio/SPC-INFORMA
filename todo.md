@@ -291,3 +291,10 @@
 - [x] Preservar integralmente o cadastro de usuários e as permissões nos demais contextos e perfis
 - [x] Adicionar regressões de interface, autorização e isolamento organizacional para o novo seletor
 - [x] Validar a correção com TypeScript, suíte Vitest, build e interface responsiva
+- [x] Auditar o login e o redirecionamento pós-2FA do REQUESTER pertencente a uma organização credora vinculada à Credits
+- [x] Garantir que o REQUESTER vinculado permaneça no namespace e na identidade Credits durante primeiro acesso, sessão e logout
+- [x] Garantir que o menu Credits do REQUESTER contenha somente Dashboard, Campanhas, FAQ e Manual
+- [x] Bloquear navegação direta do REQUESTER Credits para Empresas, Usuários, Precificação e Chaves de API
+- [x] Preservar integralmente login, rotas, menus, identidade e permissões do SPC Informa principal
+- [x] Adicionar ou fortalecer regressões do fluxo white label para REQUESTER de organização credora vinculada
+- [x] Validar a correção com TypeScript, suíte Vitest, build e interface responsiva
