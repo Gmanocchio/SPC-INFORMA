@@ -304,3 +304,7 @@
 - [x] Restaurar corretamente o favicon SPC ao navegar do Credits para o sistema principal na mesma aba
 - [x] Adicionar regressões para carregamento inicial e alternância de favicon entre SPC e Credits
 - [x] Validar a correção com TypeScript, suíte Vitest, build e capturas das duas marcas
+- [x] Auditar a arquitetura, os fluxos, as configurações e os contratos atuais para os documentos técnicos
+- [x] Redigir manual completo de implantação AWS para aplicação, banco de dados, segurança, monitoramento e operação
+- [x] Redigir escopo técnico resumido com arquitetura, módulos, perfis, integrações, dados e requisitos não funcionais
+- [x] Gerar dois PDFs profissionais, verificá-los técnica e visualmente e preparar a entrega
