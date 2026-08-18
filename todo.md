@@ -319,5 +319,5 @@
 - [ ] Realizar somente após confirmação um teste real controlado e registrar a configuração operacional
 - [x] Auditar estado Git local, conteúdo remoto e arquivos sensíveis antes do backup
 - [x] Preparar um snapshot completo da última versão em branch de backup sem reescrever o remoto
-- [ ] Enviar o snapshot ao repositório Gmanocchio/SPC-INFORMA
-- [ ] Verificar commit, branch, arquivos e integridade do backup no GitHub
+- [x] Enviar o snapshot ao repositório Gmanocchio/SPC-INFORMA
+- [x] Verificar commit, branch, arquivos e integridade do backup no GitHub
