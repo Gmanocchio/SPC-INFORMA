@@ -308,3 +308,16 @@
 - [x] Redigir manual completo de implantação AWS para aplicação, banco de dados, segurança, monitoramento e operação
 - [x] Redigir escopo técnico resumido com arquitetura, módulos, perfis, integrações, dados e requisitos não funcionais
 - [x] Gerar dois PDFs profissionais, verificá-los técnica e visualmente e preparar a entrega
+- [x] Estudar a documentação oficial da Message Center para envio de e-mail e callbacks
+- [x] Realizar toda a pesquisa da Message Center por acesso público passivo, sem My Browser ou sessão pessoal do usuário
+- [x] Auditar o broker Message Center cadastrado, seus campos protegidos e o fluxo atual de despacho
+- [x] Mapear autenticação, parâmetros obrigatórios, resposta, limites de lote e eventos de retorno
+- [ ] Implementar adaptador Message Center para disparo de e-mails em massa sem alterar outros brokers
+- [ ] Implementar normalização, autenticação, idempotência e proteção contra replay do callback Message Center
+- [ ] Adicionar regressões de envio, serialização, erros, timeout, callback e isolamento de credenciais
+- [ ] Validar TypeScript, suíte Vitest, build e ausência de regressões nos demais canais e brokers
+- [ ] Realizar somente após confirmação um teste real controlado e registrar a configuração operacional
+- [x] Auditar estado Git local, conteúdo remoto e arquivos sensíveis antes do backup
+- [x] Preparar um snapshot completo da última versão em branch de backup sem reescrever o remoto
+- [ ] Enviar o snapshot ao repositório Gmanocchio/SPC-INFORMA
+- [ ] Verificar commit, branch, arquivos e integridade do backup no GitHub
