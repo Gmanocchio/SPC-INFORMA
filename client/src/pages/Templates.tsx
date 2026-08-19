@@ -20,6 +20,7 @@ import {
   findUnsupportedTemplateVariables,
   insertTemplateVariableAtSelection,
   TEMPLATE_VARIABLES,
+  templateVariablesForChannel,
   templateVariableToken,
   type TemplateVariableKey,
 } from "@shared/template-variables";
@@ -72,11 +73,12 @@ export default function Templates() {
     onError: error => toast.error(error.message),
   });
   const variables = extractTemplateVariables(form.subject, form.content);
-  const unsupportedVariables = findUnsupportedTemplateVariables(form.subject, form.content);
+  const unsupportedVariables = findUnsupportedTemplateVariables(form.subject, form.content, form.channel);
   const previewSubject = renderSafePreview(form.subject || "Assunto demonstrativo");
   const previewContent = renderSafePreview(form.content || "A pré-visualização aparecerá aqui conforme o conteúdo for digitado.");
   const emailPreviewImage = form.channel === "EMAIL" ? getEmailTemplatePreviewImage(editingTemplatePublicId) : null;
-  const destinationColumn = "CPF";
+  const availableTemplateVariables = templateVariablesForChannel(form.channel);
+  const destinationColumn = form.channel === "EMAIL" ? "E-mail do cliente" : "CPF";
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -198,7 +200,7 @@ export default function Templates() {
                           aria-label="Variáveis disponíveis"
                           tabIndex={0}
                         >
-                          {TEMPLATE_VARIABLES.map(variable => (
+                          {availableTemplateVariables.map(variable => (
                             <button
                               key={variable.key}
                               type="button"
@@ -214,7 +216,7 @@ export default function Templates() {
                           ))}
                         </div>
                         <p className="mx-2 mt-2 shrink-0 border-t pt-3 text-xs leading-5 text-slate-500">
-                          A coluna <code className="font-semibold text-slate-700">{destinationColumn}</code> identifica o destinatário em todos os canais e também pode ser usada na mensagem como <code className="font-semibold text-slate-700">{"{{cpf}}"}</code>.
+                          A coluna <code className="font-semibold text-slate-700">{destinationColumn}</code> identifica o destinatário deste canal. Em E-mail, o endereço do cliente fica disponível como <code className="font-semibold text-slate-700">{"{{email_cliente}}"}</code>.
                         </p>
                       </PopoverContent>
                     </Popover>

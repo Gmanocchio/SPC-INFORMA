@@ -50,6 +50,13 @@
       "when": 1784584443585,
       "tag": "0006_zippy_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787050869880,
+      "tag": "0007_exotic_ben_urich",
+      "breakpoints": true
     }
   ]
 }

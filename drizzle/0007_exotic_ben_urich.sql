@@ -1,0 +1,1 @@
+ALTER TABLE `campaign_recipients` ADD `customerEmailCiphertext` text;

@@ -2,7 +2,7 @@
 
 **Base do aplicativo:** mesma origem da implantação  
 **Transporte interno:** tRPC em `/api/trpc`  
-**Webhooks de brokers:** JSON assinado  
+**Webhooks de brokers:** JSON assinado ou callback Message Center com URL opaca
 **Callback periódico:** HTTP autenticado pela plataforma
 
 ## 1. Autenticação e convenções
@@ -43,7 +43,7 @@ Os fluxos de login e recuperação utilizam mensagens neutras para reduzir enume
 
 ### 2.2 Importação e confirmação de campanha
 
-`campaigns.layout` disponibiliza o mesmo modelo para SMS, e-mail, WhatsApp e RCS. Os arquivos CSV e XLSX possuem, nesta ordem, as colunas `CPF`, `Nome do cliente`, `Nome do credor`, `Valor`, `Data de vencimento`, `Número do contrato`, `Telefone do credor`, `E-mail do credor` e `Link`. `campaigns.import` aceita CSV ou XLSX em base64, exige exatamente esse layout, normaliza e persiste os nove campos, aplica uma chave UUID de idempotência e cria a campanha para revisão. `campaigns.confirm` exige confirmação literal e executa as regras financeiras antes de liberar a campanha para fila ou agendamento. O processamento posterior reivindica destinatários atomicamente, reconstrói as nove variáveis para renderizar o template e limita tentativas transitórias.
+`campaigns.layout` mantém as nove colunas canônicas em SMS, WhatsApp e RCS: `CPF`, `Nome do cliente`, `Nome do credor`, `Valor`, `Data de vencimento`, `Número do contrato`, `Números de contato do credor (telefone)`, `E-mail de contato do credor` e `Link`. Para o canal E-mail, o modelo acrescenta como décima coluna `E-mail do cliente`, obrigatória e usada exclusivamente como destino do disparo. `campaigns.import` aceita CSV ou XLSX em base64, exige exatamente o layout do canal, normaliza e cifra os dados, aplica uma chave UUID de idempotência e cria a campanha para revisão. `campaigns.confirm` exige confirmação literal e executa as regras financeiras antes de liberar a campanha para fila ou agendamento. O processamento posterior reivindica destinatários atomicamente e limita tentativas transitórias.
 
 ## 3. Webhook de retorno do broker
 
@@ -87,7 +87,18 @@ assinatura = hex(HMAC_SHA256(webhookSecret, `${timestamp}.${rawBody}`))
 
 O processamento é idempotente pela combinação `brokerId:eventId`. Estados terminais não regredirão para eventos anteriores. Payloads assinados fora da janela são rejeitados para reduzir replay.
 
-### 3.2 Respostas
+### 3.2 Callback específico da Message Center
+
+**Rota:** `GET|POST /api/webhooks/message-center/:brokerId/:token`
+**Content-Type:** `application/json`
+**Lote:** um a dez eventos
+**Limite:** 1 MiB
+
+A Message Center não documenta assinatura HMAC ou timestamp no callback. Por isso, o sistema gera um token opaco de 256 bits derivado da API key do broker e do segredo da aplicação. O token permanece somente no caminho HTTPS cadastrado na plataforma Message Center. Uma rotação da API key exige atualizar a URL de callback. Requisições `GET` e `POST` vazias respondem como verificação de disponibilidade.
+
+O campo `Identificador` deve conter o ID interno do destinatário informado no envio. `CampoCustomizado1` transporta o UUID da campanha e `Destinatario`, quando presente, é comparado por fingerprint HMAC com o destino cifrado. `IdCall`, tipo do evento e data formam a chave de idempotência. O callback normaliza envio, entrega, falha, abertura, clique, spam e opt-out sem permitir regressão de estados terminais.
+
+### 3.3 Respostas
 
 | HTTP | Situação |
 | --- | --- |
@@ -122,6 +133,35 @@ Essa rota não aceita autenticação de usuário comum. Ela exige a identidade c
 
 Respostas `401` e `403` indicam chamada sem identidade cron; `500` é uma falha transitória registrada no servidor e pode ser repetida pela plataforma.
 
-## 5. Chaves de API administrativas
+## 5. API pública de campanhas de E-mail
 
-O módulo atual permite criar, listar e revogar chaves com os escopos `campaigns:read`, `campaigns:write` e `reports:read`. O valor integral é exibido somente no momento da criação e o banco mantém o hash. **A versão atual não expõe uma API REST externa autenticada por essas chaves**; portanto, os escopos constituem governança preparada para uma futura API de integração, e não devem ser divulgados como endpoints já disponíveis.
+**Rota:** `POST /api/v1/campaigns/email`
+**Autenticação:** `x-api-key: ntf_...` ou `Authorization: Bearer ntf_...`
+**Escopo exigido:** `campaigns:write`
+
+O valor integral da chave é exibido somente na criação e o banco mantém apenas seu hash. A organização deriva da chave autenticada e nunca do corpo da requisição. A operação aceita até 20.000 destinatários, exige `customerEmail` válido, aplica as mesmas validações e preços do upload e cria a campanha em `READY`. **Nenhum e-mail é enviado automaticamente**: um usuário autorizado ainda deve revisar e confirmar a campanha.
+
+```json
+{
+  "creditorOrganizationId": 34,
+  "templateId": 12,
+  "name": "Campanha de cobrança",
+  "idempotencyKey": "9cf9c7d2-0d29-4baf-b585-2c3bd2eb7ae7",
+  "recipients": [
+    {
+      "cpf": "52998224725",
+      "customerName": "Ana Maria",
+      "customerEmail": "cliente@example.com.br",
+      "creditorName": "Credor Brasil",
+      "amount": "R$ 1.234,56",
+      "dueDate": "31/12/2026",
+      "contractNumber": "CTR-2026-001",
+      "creditorPhone": "1140001234",
+      "creditorEmail": "cobranca@credor.com.br",
+      "link": "https://credor.example/negociar/CTR-2026-001"
+    }
+  ]
+}
+```
+
+Uma resposta `201` contém `status: "READY"` e `requiresConfirmation: true`. Respostas `401` indicam chave ausente, inválida, revogada ou expirada; `403`, escopo insuficiente; `409`, repetição da idempotência; e `422`, payload ou destinatário inválido.

@@ -13,7 +13,7 @@ import {
   uploads,
 } from "../drizzle/schema";
 import {
-  CAMPAIGN_IMPORT_COLUMNS,
+  campaignImportColumnsForChannel,
   formatDebtAmountCents,
   formatDebtDueDate,
   TEMPLATE_VARIABLES,
@@ -106,11 +106,11 @@ function parseDueDate(value: string) {
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export function assertCampaignImportColumns(row: Record<string, unknown>) {
+export function assertCampaignImportColumns(row: Record<string, unknown>, channel: Channel = "SMS") {
   const actual = Object.keys(row).map((column, index) => column.trim().replace(index === 0 ? /^\uFEFF/ : /$^/, ""));
-  const expected = [...CAMPAIGN_IMPORT_COLUMNS];
+  const expected: string[] = campaignImportColumnsForChannel(channel);
   const missing = expected.filter(column => !actual.includes(column));
-  const extra = actual.filter(column => !expected.includes(column as (typeof CAMPAIGN_IMPORT_COLUMNS)[number]));
+  const extra = actual.filter(column => !expected.includes(column));
   const orderChanged = !missing.length && !extra.length && actual.some((column, index) => column !== expected[index]);
   if (!missing.length && !extra.length && !orderChanged) return;
   const details = [
@@ -120,7 +120,7 @@ export function assertCampaignImportColumns(row: Record<string, unknown>) {
   ].filter(Boolean).join("; ");
   throw new TRPCError({
     code: "BAD_REQUEST",
-    message: `Layout inválido (${details}). Baixe o modelo padrão e mantenha exatamente as nove colunas.`,
+    message: `Layout inválido (${details}). Baixe o modelo padrão e mantenha exatamente as ${expected.length} colunas do canal.`,
   });
 }
 
@@ -140,10 +140,11 @@ function normalizeLink(value: string) {
   }
 }
 
-export function normalizeCampaignImportRow(row: Record<string, unknown>) {
+export function normalizeCampaignImportRow(row: Record<string, unknown>, channel: Channel = "SMS") {
   const source = Object.fromEntries(TEMPLATE_VARIABLES.map(variable => [variable.key, String(row[variable.column] ?? "").trim()])) as Record<TemplateVariableKey, string>;
   const cpf = normalizeCpf(source.cpf);
   const customerName = source.nome_cliente.replace(/\s+/g, " ").slice(0, 160);
+  const customerEmail = source.email_cliente.toLowerCase().slice(0, 320);
   const creditorName = source.nome_credor.replace(/\s+/g, " ").slice(0, 160);
   const amountCents = parseAmount(source.valor);
   const dueDate = parseDueDate(source.data_vencimento);
@@ -154,6 +155,7 @@ export function normalizeCampaignImportRow(row: Record<string, unknown>) {
   const errors: Array<{ code: string; message: string }> = [];
   if (!isValidCpf(cpf)) errors.push({ code: "INVALID_CPF", message: "CPF inválido ou ausente." });
   if (!customerName) errors.push({ code: "INVALID_CUSTOMER_NAME", message: "Nome do cliente ausente." });
+  if (channel === "EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(customerEmail)) errors.push({ code: "INVALID_CUSTOMER_EMAIL", message: "E-mail do cliente inválido ou ausente para campanha de E-mail." });
   if (!creditorName) errors.push({ code: "INVALID_CREDITOR_NAME", message: "Nome do credor ausente." });
   if (amountCents === null) errors.push({ code: "INVALID_AMOUNT", message: "Valor inválido ou ausente." });
   if (!dueDate) errors.push({ code: "INVALID_DUE_DATE", message: "Data de vencimento inválida. Use DD/MM/AAAA." });
@@ -171,14 +173,16 @@ export function normalizeCampaignImportRow(row: Record<string, unknown>) {
     telefone_credor: creditorPhone ?? "",
     email_credor: creditorEmail,
     link: link ?? "",
+    email_cliente: customerEmail,
   };
-  return { cpf, customerName, creditorName, amountCents, dueDate, contractNumber, creditorPhone: creditorPhone ?? "", creditorEmail, link: link ?? "", variables, errors };
+  return { cpf, customerName, customerEmail, creditorName, amountCents, dueDate, contractNumber, creditorPhone: creditorPhone ?? "", creditorEmail, link: link ?? "", variables, errors };
 }
 
 export function campaignRecipientPersistenceValues(normalized: ReturnType<typeof normalizeCampaignImportRow>) {
   return {
     cpf: normalized.cpf,
     customerName: normalized.customerName,
+    customerEmail: normalized.customerEmail,
     creditorName: normalized.creditorName,
     amountCents: normalized.amountCents,
     dueDate: normalized.dueDate,
@@ -187,6 +191,40 @@ export function campaignRecipientPersistenceValues(normalized: ReturnType<typeof
     creditorEmail: normalized.creditorEmail,
     link: normalized.link,
   };
+}
+
+function prepareCampaignRecipientRows(
+  rows: Record<string, unknown>[],
+  input: { channel: Channel; organizationId: number; campaignId: string },
+) {
+  return rows.map((row, index) => {
+    const normalized = normalizeCampaignImportRow(row, input.channel);
+    const persisted = campaignRecipientPersistenceValues(normalized);
+    const valid = normalized.errors.length === 0;
+    const fallback = (input.channel === "EMAIL" ? persisted.customerEmail : persisted.cpf) || `linha-${index + 2}`;
+    return {
+      campaignId: input.campaignId,
+      organizationId: input.organizationId,
+      destinationCiphertext: encryptSensitive(fallback, ENV.cookieSecret),
+      destinationFingerprint: hmacToken(`${input.organizationId}:${input.channel}:${fallback}`, ENV.cookieSecret),
+      variablesCiphertext: encryptSensitive(JSON.stringify(normalized.variables), ENV.cookieSecret),
+      cpfCiphertext: encryptSensitive(persisted.cpf || "[inválido]", ENV.cookieSecret),
+      customerNameCiphertext: encryptSensitive(persisted.customerName || "[inválido]", ENV.cookieSecret),
+      customerEmailCiphertext: persisted.customerEmail ? encryptSensitive(persisted.customerEmail, ENV.cookieSecret) : null,
+      creditorNameCiphertext: encryptSensitive(persisted.creditorName || "[inválido]", ENV.cookieSecret),
+      amountCents: persisted.amountCents,
+      dueDate: persisted.dueDate,
+      contractNumberCiphertext: encryptSensitive(persisted.contractNumber || "[inválido]", ENV.cookieSecret),
+      creditorPhoneCiphertext: encryptSensitive(persisted.creditorPhone || "[inválido]", ENV.cookieSecret),
+      creditorEmailCiphertext: encryptSensitive(persisted.creditorEmail || "[inválido]", ENV.cookieSecret),
+      linkCiphertext: encryptSensitive(persisted.link || "[inválido]", ENV.cookieSecret),
+      status: valid ? "PENDING" as const : "INVALID" as const,
+      errorCode: valid ? null : `ROW_${index + 2}:${normalized.errors[0]?.code ?? "INVALID_ROW"}`,
+      validationCode: normalized.errors[0]?.code ?? "INVALID_ROW",
+      validationError: normalized.errors.map(error => error.message).join(" "),
+      rowNumber: index + 2,
+    };
+  });
 }
 
 async function resolveCampaignOrganization(actor: DomainActor, requested?: number) {
@@ -223,8 +261,13 @@ export function campaignTemplateSnapshotValues(template: typeof messageTemplates
   };
 }
 
-export function campaignImportLayout(_channel: Channel) {
-  return { filename: "modelo-spc-informa.csv", columns: [...CAMPAIGN_IMPORT_COLUMNS], separator: ";", encoding: "UTF-8" };
+export function campaignImportLayout(channel: Channel) {
+  return {
+    filename: channel === "EMAIL" ? "modelo-spc-informa-email.csv" : "modelo-spc-informa.csv",
+    columns: campaignImportColumnsForChannel(channel),
+    separator: ";",
+    encoding: "UTF-8",
+  };
 }
 
 export async function listCampaignOptions(actor: DomainActor) {
@@ -273,34 +316,8 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
   const idempotencyKey = hmacToken(`${organization.id}:${input.idempotencyKey}`, ENV.cookieSecret);
   const rows = parseRows(file, input.mimeType, input.filename);
   if (!rows.length || rows.length > MAX_ROWS) throw new TRPCError({ code: "BAD_REQUEST", message: `O arquivo deve conter entre 1 e ${MAX_ROWS.toLocaleString("pt-BR")} linhas.` });
-  assertCampaignImportColumns(rows[0]);
-  const normalizedRows = rows.map((row, index) => {
-    const normalized = normalizeCampaignImportRow(row);
-    const persisted = campaignRecipientPersistenceValues(normalized);
-    const valid = normalized.errors.length === 0;
-    const fallback = persisted.cpf || `linha-${index + 2}`;
-    return {
-      campaignId,
-      organizationId: organization.id,
-      destinationCiphertext: encryptSensitive(fallback, ENV.cookieSecret),
-      destinationFingerprint: hmacToken(`${organization.id}:${input.channel}:${fallback}`, ENV.cookieSecret),
-      variablesCiphertext: encryptSensitive(JSON.stringify(normalized.variables), ENV.cookieSecret),
-      cpfCiphertext: encryptSensitive(persisted.cpf || "[inválido]", ENV.cookieSecret),
-      customerNameCiphertext: encryptSensitive(persisted.customerName || "[inválido]", ENV.cookieSecret),
-      creditorNameCiphertext: encryptSensitive(persisted.creditorName || "[inválido]", ENV.cookieSecret),
-      amountCents: persisted.amountCents,
-      dueDate: persisted.dueDate,
-      contractNumberCiphertext: encryptSensitive(persisted.contractNumber || "[inválido]", ENV.cookieSecret),
-      creditorPhoneCiphertext: encryptSensitive(persisted.creditorPhone || "[inválido]", ENV.cookieSecret),
-      creditorEmailCiphertext: encryptSensitive(persisted.creditorEmail || "[inválido]", ENV.cookieSecret),
-      linkCiphertext: encryptSensitive(persisted.link || "[inválido]", ENV.cookieSecret),
-      status: valid ? "PENDING" as const : "INVALID" as const,
-      errorCode: valid ? null : `ROW_${index + 2}:${normalized.errors[0]?.code ?? "INVALID_ROW"}`,
-      validationCode: normalized.errors[0]?.code ?? "INVALID_ROW",
-      validationError: normalized.errors.map(error => error.message).join(" "),
-      rowNumber: index + 2,
-    };
-  });
+  assertCampaignImportColumns(rows[0], input.channel);
+  const normalizedRows = prepareCampaignRecipientRows(rows, { channel: input.channel, organizationId: organization.id, campaignId });
   const validRows = normalizedRows.filter(row => row.status === "PENDING").length;
   const invalidRows = normalizedRows.length - validRows;
   const totalAmountCents = calculateCampaignAmountCents(validRows, unitPriceMicros);
@@ -376,6 +393,112 @@ export async function createCampaignFromFile(actor: DomainActor, input: {
     totalAmountCents,
     errors: validationErrors,
     errorsTruncated: invalidRows > validationErrors.length,
+  };
+}
+
+export type EmailCampaignApiRecipient = {
+  cpf: string;
+  customerName: string;
+  customerEmail: string;
+  creditorName: string;
+  amount: string | number;
+  dueDate: string;
+  contractNumber: string;
+  creditorPhone: string;
+  creditorEmail: string;
+  link: string;
+};
+
+export async function createEmailCampaignFromApi(actor: DomainActor, input: {
+  creditorOrganizationId: number;
+  templateId: number;
+  name: string;
+  recipients: EmailCampaignApiRecipient[];
+  scheduledFor?: Date | null;
+  idempotencyKey: string;
+}) {
+  if (!input.recipients.length || input.recipients.length > MAX_ROWS) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: `A API aceita entre 1 e ${MAX_ROWS.toLocaleString("pt-BR")} destinatários por campanha.` });
+  }
+  const organization = await resolveCampaignOrganization(actor);
+  const template = await assertCreditorAndTemplate(
+    organization.id,
+    input.creditorOrganizationId,
+    input.templateId,
+    "EMAIL",
+    organization.type === "SPC_BRASIL",
+  );
+  const unitPriceMicros = await resolveCampaignPrice(organization.id, input.creditorOrganizationId, "EMAIL");
+  const campaignId = randomUUID();
+  const idempotencyKey = hmacToken(`${organization.id}:api:${input.idempotencyKey}`, ENV.cookieSecret);
+  const rows = input.recipients.map(recipient => ({
+    CPF: recipient.cpf,
+    "Nome do cliente": recipient.customerName,
+    "Nome do credor": recipient.creditorName,
+    Valor: String(recipient.amount),
+    "Data de vencimento": recipient.dueDate,
+    "Número do contrato": recipient.contractNumber,
+    "Números de contato do credor (telefone)": recipient.creditorPhone,
+    "E-mail de contato do credor": recipient.creditorEmail,
+    Link: recipient.link,
+    "E-mail do cliente": recipient.customerEmail,
+  }));
+  const normalizedRows = prepareCampaignRecipientRows(rows, { channel: "EMAIL", organizationId: organization.id, campaignId });
+  const validationErrors = normalizedRows
+    .filter(row => row.status === "INVALID")
+    .slice(0, 100)
+    .map(row => ({ rowNumber: row.rowNumber - 1, errorCode: row.validationCode, message: row.validationError }));
+  if (validationErrors.length) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Destinatários inválidos: ${validationErrors.map(error => `linha ${error.rowNumber}: ${error.message}`).join(" | ")}`,
+    });
+  }
+  const db = await requireDb();
+  await db.transaction(async tx => {
+    const duplicate = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.idempotencyKey, idempotencyKey)).limit(1);
+    if (duplicate[0]) throw new TRPCError({ code: "CONFLICT", message: "Esta campanha de API já foi processada." });
+    await tx.insert(campaigns).values({
+      id: campaignId,
+      organizationId: organization.id,
+      creditorOrganizationId: input.creditorOrganizationId,
+      createdByUserId: actor.id,
+      templateId: input.templateId,
+      ...campaignTemplateSnapshotValues(template),
+      uploadId: null,
+      name: input.name.trim(),
+      channel: "EMAIL",
+      status: "READY",
+      billingModelSnapshot: organization.billingModel,
+      scheduledFor: input.scheduledFor ?? null,
+      recipientCount: normalizedRows.length,
+      validRecipientCount: normalizedRows.length,
+      invalidRecipientCount: 0,
+      unitPriceMicros,
+      totalCostMicros: normalizedRows.length * unitPriceMicros,
+      idempotencyKey,
+    });
+    for (let index = 0; index < normalizedRows.length; index += 500) {
+      await tx.insert(campaignRecipients).values(
+        normalizedRows.slice(index, index + 500).map(({ validationCode: _code, validationError: _error, rowNumber: _row, ...recipient }) => recipient),
+      );
+    }
+  });
+  await writeAudit({
+    organizationId: organization.id,
+    actorUserId: actor.id,
+    action: "CAMPAIGN_API_CREATED",
+    resourceType: "campaign",
+    resourceId: campaignId,
+    metadata: { channel: "EMAIL", recipientCount: normalizedRows.length, creditorOrganizationId: input.creditorOrganizationId },
+  });
+  return {
+    id: campaignId,
+    status: "READY" as const,
+    recipientCount: normalizedRows.length,
+    unitPriceMicros,
+    totalAmountCents: calculateCampaignAmountCents(normalizedRows.length, unitPriceMicros),
+    requiresConfirmation: true as const,
   };
 }
 

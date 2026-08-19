@@ -64,6 +64,7 @@ export async function cleanupExpiredPersonalData(
         variablesCiphertext: null,
         cpfCiphertext: null,
         customerNameCiphertext: null,
+        customerEmailCiphertext: null,
         creditorNameCiphertext: null,
         amountCents: null,
         dueDate: null,

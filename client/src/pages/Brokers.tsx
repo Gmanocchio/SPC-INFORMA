@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, CircleOff, KeyRound, Pencil, Plus, RadioTower, ShieldCheck, Star, Trash2, Webhook } from "lucide-react";
+import { CheckCircle2, CircleOff, ClipboardCopy, KeyRound, Pencil, Plus, RadioTower, ShieldCheck, Star, Trash2, Webhook } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ type BrokerRow = {
 
 const channels: Channel[] = ["SMS", "EMAIL", "WHATSAPP", "RCS"];
 const channelLabel: Record<Channel, string> = { SMS: "SMS", EMAIL: "E-mail", WHATSAPP: "WhatsApp", RCS: "RCS" };
-const emptyForm = { name: "", channel: "SMS" as Channel, endpointUrl: "", apiKey: "", username: "", password: "", webhookSecret: "", sendPath: "", signatureHeader: "x-spc-signature", timeoutMs: "10000", active: true, preferred: false };
+const emptyForm = { name: "", channel: "SMS" as Channel, endpointUrl: "", apiKey: "", username: "", password: "", webhookSecret: "", sendPath: "", signatureHeader: "x-spc-signature", timeoutMs: "10000", templateName: "", senderName: "", senderEmail: "", maxRequestsPerRun: "45", concurrency: "5", active: true, preferred: false };
 
 export default function Brokers() {
   const utils = trpc.useUtils();
@@ -36,6 +36,14 @@ export default function Brokers() {
   const create = trpc.brokers.create.useMutation({ onSuccess: async () => { await utils.brokers.list.invalidate(); closeDialog(); toast.success("Broker cadastrado com credenciais protegidas."); }, onError: error => toast.error(error.message) });
   const update = trpc.brokers.update.useMutation({ onSuccess: async () => { await utils.brokers.list.invalidate(); closeDialog(); toast.success("Configuração do broker atualizada."); }, onError: error => toast.error(error.message) });
   const deactivate = trpc.brokers.deactivate.useMutation({ onSuccess: async () => { await utils.brokers.list.invalidate(); toast.success("Broker desativado e removido da seleção automática."); }, onError: error => toast.error(error.message) });
+  const callbackConfig = trpc.brokers.messageCenterCallback.useMutation({
+    onSuccess: async data => {
+      const callbackUrl = new URL(data.path, window.location.origin).toString();
+      await navigator.clipboard.writeText(callbackUrl);
+      toast.success("URL protegida do callback Message Center copiada.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   function closeDialog() {
     setOpen(false);
@@ -53,6 +61,11 @@ export default function Brokers() {
       sendPath: typeof row.extraConfig.sendPath === "string" ? row.extraConfig.sendPath : "",
       signatureHeader: typeof row.extraConfig.signatureHeader === "string" ? row.extraConfig.signatureHeader : "x-spc-signature",
       timeoutMs: String(row.extraConfig.timeoutMs ?? "10000"),
+      templateName: typeof row.extraConfig.templateName === "string" ? row.extraConfig.templateName : "",
+      senderName: typeof row.extraConfig.senderName === "string" ? row.extraConfig.senderName : "",
+      senderEmail: typeof row.extraConfig.senderEmail === "string" ? row.extraConfig.senderEmail : "",
+      maxRequestsPerRun: String(row.extraConfig.maxRequestsPerRun ?? "45"),
+      concurrency: String(row.extraConfig.concurrency ?? "5"),
       active: row.active,
       preferred: row.preferred,
     });
@@ -68,7 +81,16 @@ export default function Brokers() {
       endpointUrl: form.endpointUrl,
       active: form.active,
       preferred: form.preferred,
-      extraConfig: { sendPath: form.sendPath.trim(), signatureHeader: form.signatureHeader.trim() || "x-spc-signature", timeoutMs: Math.min(30000, Math.max(1000, Number(form.timeoutMs) || 10000)) },
+      extraConfig: {
+        sendPath: form.sendPath.trim(),
+        signatureHeader: form.signatureHeader.trim() || "x-spc-signature",
+        timeoutMs: Math.min(30000, Math.max(1000, Number(form.timeoutMs) || 10000)),
+        templateName: form.templateName.trim(),
+        senderName: form.senderName.trim(),
+        senderEmail: form.senderEmail.trim(),
+        maxRequestsPerRun: Math.min(3000, Math.max(1, Number(form.maxRequestsPerRun) || 45)),
+        concurrency: Math.min(20, Math.max(1, Number(form.concurrency) || 5)),
+      },
     };
     if (editingId) update.mutate({ id: editingId, data: { ...data, ...(Object.keys(credentials).length ? { credentials } : {}) } });
     else create.mutate({ ...data, credentials });
@@ -87,6 +109,7 @@ export default function Brokers() {
           <Field label="Endpoint HTTPS"><Input required type="url" value={form.endpointUrl} onChange={event => setForm({ ...form, endpointUrl: event.target.value })} placeholder="https://api.provedor.com/" /></Field>
           <div className="rounded-2xl bg-slate-50 p-4"><div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-900"><KeyRound className="size-4 text-[#0066cc]" /> Credenciais protegidas</div><div className="grid gap-4 sm:grid-cols-2"><Field label="API key / token"><Input type="password" autoComplete="new-password" value={form.apiKey} onChange={event => setForm({ ...form, apiKey: event.target.value })} placeholder={editingId ? "Manter atual" : "Token do provedor"} /></Field><Field label="Segredo do webhook (HMAC)"><Input type="password" autoComplete="new-password" value={form.webhookSecret} onChange={event => setForm({ ...form, webhookSecret: event.target.value })} placeholder={editingId ? "Manter atual" : "Segredo compartilhado"} /></Field><Field label="Usuário (opcional)"><Input autoComplete="off" value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} /></Field><Field label="Senha (opcional)"><Input type="password" autoComplete="new-password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} /></Field></div></div>
           <div className="grid gap-4 sm:grid-cols-3"><Field label="Rota de envio"><Input value={form.sendPath} onChange={event => setForm({ ...form, sendPath: event.target.value })} placeholder="v1/messages" /></Field><Field label="Header da assinatura"><Input value={form.signatureHeader} onChange={event => setForm({ ...form, signatureHeader: event.target.value })} /></Field><Field label="Timeout (ms)"><Input type="number" min={1000} max={30000} value={form.timeoutMs} onChange={event => setForm({ ...form, timeoutMs: event.target.value })} /></Field></div>
+          {form.endpointUrl.includes("sistema.messagecenter.com.br/api/Integracao/EnviarEmailComTemplate") && <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4"><div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-900"><Webhook className="size-4 text-[#0066cc]" /> Message Center</div><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome do template no provedor"><Input value={form.templateName} onChange={event => setForm({ ...form, templateName: event.target.value })} placeholder="Usar o nome do template SPC" /></Field><Field label="Nome do remetente"><Input value={form.senderName} onChange={event => setForm({ ...form, senderName: event.target.value })} placeholder="Usar Nome do credor" /></Field><Field label="E-mail do remetente"><Input type="email" value={form.senderEmail} onChange={event => setForm({ ...form, senderEmail: event.target.value })} placeholder="Usar E-mail do credor" /></Field><Field label="Requisições por execução"><Input type="number" min={1} max={3000} value={form.maxRequestsPerRun} onChange={event => setForm({ ...form, maxRequestsPerRun: event.target.value })} /></Field><Field label="Concorrência"><Input type="number" min={1} max={20} value={form.concurrency} onChange={event => setForm({ ...form, concurrency: event.target.value })} /></Field></div></div>}
           <div className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-2"><Toggle label="Broker ativo" description="Pode receber novos disparos." checked={form.active} onCheckedChange={active => setForm({ ...form, active })} /><Toggle label="Preferencial no canal" description="Substitui o preferencial atual." checked={form.preferred} onCheckedChange={preferred => setForm({ ...form, preferred })} /></div>
           <div className="flex justify-end gap-3 border-t pt-4"><Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button><Button disabled={pending || (!editingId && !form.apiKey.trim() && !form.webhookSecret.trim() && !(form.username.trim() && form.password.trim()))} className="bg-[#0066cc] text-white">{pending ? "Salvando…" : editingId ? "Salvar alterações" : "Cadastrar broker"}</Button></div>
         </form></DialogContent></Dialog>
@@ -97,7 +120,7 @@ export default function Brokers() {
     <section className="command-panel p-4 md:p-6"><div className="mb-5"><h2 className="font-bold text-slate-950">Provedores configurados</h2><p className="mt-1 text-sm text-slate-500">A lista mostra apenas os nomes dos campos secretos, nunca seus valores.</p></div>
       {list.isLoading ? <div className="grid gap-4 lg:grid-cols-2"><Skeleton className="h-56" /><Skeleton className="h-56" /></div> : list.isError ? <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{list.error.message}</div> : list.data?.length ? <div className="grid gap-4 lg:grid-cols-2">{list.data.map(row => <article key={row.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-transform duration-200 hover:-translate-y-0.5"><div className="flex items-start justify-between gap-4"><div className="flex min-w-0 items-start gap-3"><span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${row.active ? "bg-blue-50 text-[#0066cc]" : "bg-slate-100 text-slate-500"}`}><RadioTower className="size-5" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-bold text-slate-950">{row.name}</h3>{row.preferred && <Badge className="bg-amber-50 text-amber-700"><Star className="mr-1 size-3" /> Preferencial</Badge>}</div><p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{channelLabel[row.channel]}</p></div></div><Badge className={row.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}>{row.active ? <CheckCircle2 className="mr-1 size-3" /> : <CircleOff className="mr-1 size-3" />}{row.active ? "Ativo" : "Inativo"}</Badge></div>
           <div className="mt-5 space-y-3 text-sm"><div><span className="text-xs font-bold uppercase tracking-wider text-slate-400">Endpoint</span><p className="mt-1 break-all font-medium text-slate-700">{row.endpointUrl}</p></div><div><span className="text-xs font-bold uppercase tracking-wider text-slate-400">Campos protegidos</span><div className="mt-2 flex flex-wrap gap-2">{row.credentialFields.map(field => <Badge key={field} variant="outline"><KeyRound className="mr-1 size-3" /> {field}</Badge>)}</div></div></div>
-          <div className="mt-5 flex justify-end gap-2 border-t pt-4"><Button variant="outline" size="sm" onClick={() => edit(row)}><Pencil className="size-4" /> Editar</Button>{row.active && <Button variant="outline" size="sm" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={deactivate.isPending} onClick={() => { if (window.confirm(`Desativar ${row.name}? Campanhas futuras não usarão este broker.`)) deactivate.mutate({ id: row.id }); }}><Trash2 className="size-4" /> Desativar</Button>}</div>
+          <div className="mt-5 flex flex-wrap justify-end gap-2 border-t pt-4">{row.endpointUrl.includes("sistema.messagecenter.com.br/api/Integracao/EnviarEmailComTemplate") && <Button variant="outline" size="sm" disabled={callbackConfig.isPending} onClick={() => callbackConfig.mutate({ id: row.id })}><ClipboardCopy className="size-4" /> Copiar callback</Button>}<Button variant="outline" size="sm" onClick={() => edit(row)}><Pencil className="size-4" /> Editar</Button>{row.active && <Button variant="outline" size="sm" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={deactivate.isPending} onClick={() => { if (window.confirm(`Desativar ${row.name}? Campanhas futuras não usarão este broker.`)) deactivate.mutate({ id: row.id }); }}><Trash2 className="size-4" /> Desativar</Button>}</div>
         </article>)}</div> : <div className="rounded-2xl border border-dashed bg-slate-50 p-10 text-center"><RadioTower className="mx-auto size-8 text-slate-400" /><h3 className="mt-3 font-bold text-slate-900">Nenhum broker cadastrado</h3><p className="mt-1 text-sm text-slate-500">Cadastre o primeiro provedor para habilitar o roteamento de campanhas.</p></div>}
     </section>
   </div>;

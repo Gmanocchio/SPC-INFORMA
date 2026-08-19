@@ -345,6 +345,7 @@ export const campaignRecipients = mysqlTable(
     variablesCiphertext: text("variablesCiphertext"),
     cpfCiphertext: text("cpfCiphertext"),
     customerNameCiphertext: text("customerNameCiphertext"),
+    customerEmailCiphertext: text("customerEmailCiphertext"),
     creditorNameCiphertext: text("creditorNameCiphertext"),
     amountCents: bigint("amountCents", { mode: "number" }),
     dueDate: date("dueDate", { mode: "string" }),

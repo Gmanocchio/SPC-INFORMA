@@ -1,4 +1,4 @@
-export const TEMPLATE_VARIABLES = [
+const STANDARD_TEMPLATE_VARIABLES = [
   {
     key: "cpf",
     column: "CPF",
@@ -64,10 +64,29 @@ export const TEMPLATE_VARIABLES = [
   },
 ] as const;
 
+export const EMAIL_CLIENT_VARIABLE = {
+  key: "email_cliente",
+  column: "E-mail do cliente",
+  label: "E-mail do cliente",
+  description: "Endereço do cliente usado exclusivamente como destinatário das campanhas de E-mail.",
+  preview: "cliente@exemplo.com.br",
+} as const;
+
+export const TEMPLATE_VARIABLES = [...STANDARD_TEMPLATE_VARIABLES, EMAIL_CLIENT_VARIABLE] as const;
+
 export type TemplateVariableKey = (typeof TEMPLATE_VARIABLES)[number]["key"];
 
 export const TEMPLATE_VARIABLE_KEYS = TEMPLATE_VARIABLES.map(item => item.key);
-export const CAMPAIGN_IMPORT_COLUMNS = TEMPLATE_VARIABLES.map(item => item.column);
+export const CAMPAIGN_IMPORT_COLUMNS = STANDARD_TEMPLATE_VARIABLES.map(item => item.column);
+export const EMAIL_CAMPAIGN_IMPORT_COLUMNS = [...CAMPAIGN_IMPORT_COLUMNS, EMAIL_CLIENT_VARIABLE.column];
+
+export function campaignImportColumnsForChannel(channel: "SMS" | "EMAIL" | "WHATSAPP" | "RCS") {
+  return channel === "EMAIL" ? [...EMAIL_CAMPAIGN_IMPORT_COLUMNS] : [...CAMPAIGN_IMPORT_COLUMNS];
+}
+
+export function templateVariablesForChannel(channel: "SMS" | "EMAIL" | "WHATSAPP" | "RCS") {
+  return channel === "EMAIL" ? [...TEMPLATE_VARIABLES] : [...STANDARD_TEMPLATE_VARIABLES];
+}
 
 export function campaignImportHeaderRow(columns: readonly string[] = CAMPAIGN_IMPORT_COLUMNS) {
   return [...columns];
@@ -113,8 +132,15 @@ export function extractTemplateVariables(subject: string | null | undefined, con
   return Array.from(values).sort();
 }
 
-export function findUnsupportedTemplateVariables(subject: string | null | undefined, content: string) {
-  return extractTemplateVariables(subject, content).filter(variable => !isTemplateVariableKey(variable));
+export function findUnsupportedTemplateVariables(
+  subject: string | null | undefined,
+  content: string,
+  channel?: "SMS" | "EMAIL" | "WHATSAPP" | "RCS",
+) {
+  const allowed = channel
+    ? new Set<string>([...templateVariablesForChannel(channel).map(item => item.key), ...LEGACY_TEMPLATE_VARIABLE_KEYS])
+    : allowedTemplateVariables;
+  return extractTemplateVariables(subject, content).filter(variable => !allowed.has(variable));
 }
 
 export function insertTemplateVariableAtSelection(

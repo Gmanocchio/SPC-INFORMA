@@ -5,6 +5,8 @@ import { ENV } from "./_core/env";
 import { writeAudit } from "./audit";
 import { getDb } from "./db";
 import { decryptSensitive, encryptSensitive } from "./security";
+import { isMessageCenterEndpoint } from "./message-center-adapter";
+import { messageCenterCallbackToken } from "./message-center-callback";
 
 export type BrokerChannel = "SMS" | "EMAIL" | "WHATSAPP" | "RCS";
 export type BrokerActor = {
@@ -175,4 +177,16 @@ export async function getBrokerForWebhook(id: number) {
   const db = await requireDb();
   const [row] = await db.select().from(brokers).where(and(eq(brokers.id, id), eq(brokers.status, "ACTIVE"))).limit(1);
   return row ? { ...row, credentials: decryptCredentials(row.encryptedCredentials), extraConfig: (row.extraConfig ?? {}) as BrokerExtraConfig } : null;
+}
+
+export async function getMessageCenterCallbackConfig(actor: BrokerActor, id: number) {
+  assertSpcAdmin(actor);
+  const db = await requireDb();
+  const [row] = await db.select().from(brokers).where(and(eq(brokers.id, id), eq(brokers.organizationId, actor.organizationId))).limit(1);
+  if (!row || !isMessageCenterEndpoint(row.baseUrl)) throw new TRPCError({ code: "NOT_FOUND", message: "Broker Message Center não encontrado no seu escopo." });
+  const credentials = decryptCredentials(row.encryptedCredentials);
+  if (!credentials.apiKey || !ENV.cookieSecret) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "API key da Message Center indisponível para gerar o callback." });
+  const token = messageCenterCallbackToken(row.id, credentials.apiKey, ENV.cookieSecret);
+  await writeAudit({ organizationId: actor.organizationId, actorUserId: actor.id, action: "BROKER_CALLBACK_URL_VIEWED", resourceType: "broker", resourceId: row.id, metadata: { provider: "MESSAGE_CENTER" } });
+  return { path: `/api/webhooks/message-center/${row.id}/${token}`, rotatesWithApiKey: true as const };
 }

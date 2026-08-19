@@ -5,9 +5,15 @@ import { ENV } from "./_core/env";
 import { getPreferredBrokerForDispatch } from "./broker-service";
 import { getDb } from "./db";
 import { decryptSensitive, sha256 } from "./security";
+import {
+  isMessageCenterEndpoint,
+  messageCenterConcurrency,
+  messageCenterRequestBudget,
+  sendMessageCenterEmail,
+} from "./message-center-adapter";
 
 type ProcessingOptions = { campaignLimit?: number; recipientLimit?: number; concurrency?: number };
-type DispatchTemplate = { subject: string | null; content: string; version: number };
+type DispatchTemplate = { name: string; subject: string | null; content: string; version: number };
 
 async function requireDb() {
   const db = await getDb();
@@ -25,6 +31,7 @@ export function templateForCampaign(
 ): DispatchTemplate | null {
   if (campaign.templateContentSnapshot !== null && campaign.templateVersionSnapshot !== null) {
     return {
+      name: campaign.templateNameSnapshot ?? `template-${campaign.templateId}`,
       subject: campaign.templateSubjectSnapshot,
       content: campaign.templateContentSnapshot,
       version: campaign.templateVersionSnapshot,
@@ -32,6 +39,7 @@ export function templateForCampaign(
   }
   if (!legacyTemplate) return null;
   return {
+    name: legacyTemplate.name,
     subject: legacyTemplate.subject,
     content: legacyTemplate.content,
     version: legacyTemplate.version,
@@ -60,6 +68,7 @@ export function variablesFor(recipient: typeof campaignRecipients.$inferSelect):
     return {
       cpf: decryptSensitive(recipient.cpfCiphertext, ENV.cookieSecret),
       nome_cliente: customerName,
+      email_cliente: recipient.customerEmailCiphertext ? decryptSensitive(recipient.customerEmailCiphertext, ENV.cookieSecret) : "",
       nome_credor: decryptSensitive(recipient.creditorNameCiphertext, ENV.cookieSecret),
       valor: amount,
       data_vencimento: dueDate,
@@ -103,18 +112,39 @@ async function dispatchRecipient(campaign: typeof campaigns.$inferSelect, templa
   const destination = targetFor(recipient);
   if (!destination) throw Object.assign(new Error("Destinatário sem endereço compatível com o canal."), { retryable: false });
   const timeout = brokerTimeoutMs(extra);
+  if (isMessageCenterEndpoint(broker.baseUrl)) {
+    const apiKey = broker.credentials.apiKey;
+    if (!apiKey) throw Object.assign(new Error("API key da Message Center não configurada."), { retryable: false });
+    const subject = template.subject ? renderTemplate(template.subject, variables) : "";
+    const templateName = String(extra.templateName || template.name);
+    const senderName = String(extra.senderName || extra.remetenteNome || variables.nome_credor || "");
+    const senderEmail = String(extra.senderEmail || extra.remetenteEmail || variables.email_credor || "");
+    return sendMessageCenterEmail(broker.baseUrl, apiKey, {
+      recipientId: recipient.id,
+      destination,
+      templateName,
+      senderName,
+      senderEmail,
+      subject,
+      campaignId: campaign.id,
+      organizationId: campaign.organizationId,
+      creditorOrganizationId: campaign.creditorOrganizationId,
+      variables,
+    }, timeout);
+  }
+  const destinationType = campaign.channel === "EMAIL" ? "EMAIL" : "CPF";
   const payload = {
     idempotencyKey: recipient.id,
     campaignId: campaign.id,
     recipientId: recipient.id,
     channel: campaign.channel,
     destination,
-    destinationType: "CPF",
+    destinationType,
     subject: template.subject ? renderTemplate(template.subject, variables) : null,
     content: renderTemplate(template.content, variables),
     variables,
     callbackUrl: typeof extra.callbackUrl === "string" ? extra.callbackUrl : undefined,
-    metadata: { brokerId: broker.id, organizationId: campaign.organizationId, creditorOrganizationId: campaign.creditorOrganizationId, destinationType: "CPF" },
+    metadata: { brokerId: broker.id, organizationId: campaign.organizationId, creditorOrganizationId: campaign.creditorOrganizationId, destinationType },
   };
   let response: Response;
   try {
@@ -155,7 +185,7 @@ async function refreshCampaign(campaignId: string) {
   await db.update(campaigns).set({ status, deliveredCount: delivered, failedCount: failed, completedAt }).where(eq(campaigns.id, campaignId));
 }
 
-async function processCampaign(campaign: typeof campaigns.$inferSelect, recipientLimit: number, concurrency: number) {
+async function processCampaign(campaign: typeof campaigns.$inferSelect, recipientLimit: number, concurrency: number, brokerBudget: Map<number, number>) {
   const db = await requireDb();
   if (campaign.status === "QUEUED") {
     const result = await db.update(campaigns).set({ status: "PROCESSING", startedAt: new Date() }).where(and(eq(campaigns.id, campaign.id), eq(campaigns.status, "QUEUED")));
@@ -173,9 +203,19 @@ async function processCampaign(campaign: typeof campaigns.$inferSelect, recipien
     template = templateForCampaign(campaign, legacyTemplate);
   }
   if (!template) throw new Error(`Template ${campaign.templateId} não encontrado.`);
-  const recipients = await db.select().from(campaignRecipients).where(and(eq(campaignRecipients.campaignId, campaign.id), eq(campaignRecipients.status, "PENDING"))).orderBy(asc(campaignRecipients.createdAt)).limit(recipientLimit);
-  for (let offset = 0; offset < recipients.length; offset += concurrency) {
-    const chunk = recipients.slice(offset, offset + concurrency);
+  let effectiveRecipientLimit = recipientLimit;
+  let effectiveConcurrency = concurrency;
+  if (isMessageCenterEndpoint(broker.baseUrl)) {
+    const maximum = messageCenterRequestBudget(broker.extraConfig);
+    const used = brokerBudget.get(broker.id) ?? 0;
+    effectiveRecipientLimit = Math.min(recipientLimit, Math.max(0, maximum - used));
+    effectiveConcurrency = Math.min(concurrency, messageCenterConcurrency(broker.extraConfig));
+    if (effectiveRecipientLimit === 0) return { campaignId: campaign.id, deferred: "MESSAGE_CENTER_RATE_BUDGET", brokerId: broker.id };
+  }
+  const recipients = await db.select().from(campaignRecipients).where(and(eq(campaignRecipients.campaignId, campaign.id), eq(campaignRecipients.status, "PENDING"))).orderBy(asc(campaignRecipients.createdAt)).limit(effectiveRecipientLimit);
+  if (isMessageCenterEndpoint(broker.baseUrl)) brokerBudget.set(broker.id, (brokerBudget.get(broker.id) ?? 0) + recipients.length);
+  for (let offset = 0; offset < recipients.length; offset += effectiveConcurrency) {
+    const chunk = recipients.slice(offset, offset + effectiveConcurrency);
     await Promise.all(chunk.map(async recipient => {
       const claim = await db.update(campaignRecipients).set({ status: "QUEUED" }).where(and(eq(campaignRecipients.id, recipient.id), eq(campaignRecipients.status, "PENDING")));
       if (Number(claim[0].affectedRows) !== 1) return;
@@ -207,7 +247,8 @@ export async function processCampaignQueue(options: ProcessingOptions = {}) {
   await db.update(campaigns).set({ status: "QUEUED" }).where(and(eq(campaigns.status, "SCHEDULED"), or(isNull(campaigns.scheduledFor), lte(campaigns.scheduledFor, now))));
   const candidates = await db.select().from(campaigns).where(inArray(campaigns.status, ["QUEUED", "PROCESSING"])).orderBy(asc(campaigns.scheduledFor), asc(campaigns.createdAt)).limit(options.campaignLimit ?? 5);
   const results = [];
-  for (const campaign of candidates) results.push(await processCampaign(campaign, options.recipientLimit ?? 100, options.concurrency ?? 8));
+  const brokerBudget = new Map<number, number>();
+  for (const campaign of candidates) results.push(await processCampaign(campaign, options.recipientLimit ?? 100, options.concurrency ?? 8, brokerBudget));
   return { processedAt: now.toISOString(), campaigns: results };
 }
 

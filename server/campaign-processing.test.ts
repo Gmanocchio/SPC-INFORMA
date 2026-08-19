@@ -30,6 +30,7 @@ describe("processamento de campanhas", () => {
 
   it("usa o snapshot da campanha mesmo após o template ativo receber uma nova versão", () => {
     const campaign = {
+      templateNameSnapshot: "Cobrança homologada",
       templateSubjectSnapshot: "Assunto homologado v7",
       templateContentSnapshot: "Conteúdo homologado v7",
       templateVersionSnapshot: 7,
@@ -41,6 +42,7 @@ describe("processamento de campanhas", () => {
     } as unknown as typeof messageTemplates.$inferSelect;
 
     expect(templateForCampaign(campaign, currentTemplate)).toEqual({
+      name: "Cobrança homologada",
       subject: "Assunto homologado v7",
       content: "Conteúdo homologado v7",
       version: 7,
@@ -52,6 +54,7 @@ describe("processamento de campanhas", () => {
     const recipient = {
       cpfCiphertext: encrypt("52998224725"),
       customerNameCiphertext: encrypt("Ana Maria"),
+      customerEmailCiphertext: encrypt("cliente@example.com.br"),
       creditorNameCiphertext: encrypt("Credor Brasil"),
       amountCents: 123456,
       dueDate: "2026-12-31",
@@ -65,6 +68,7 @@ describe("processamento de campanhas", () => {
     expect(variablesFor(recipient)).toEqual({
       cpf: "52998224725",
       nome_cliente: "Ana Maria",
+      email_cliente: "cliente@example.com.br",
       nome_credor: "Credor Brasil",
       valor: "R$ 1.234,56",
       data_vencimento: "31/12/2026",

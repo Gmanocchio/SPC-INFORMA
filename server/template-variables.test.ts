@@ -6,11 +6,13 @@ import { assertCampaignImportColumns, campaignImportLayout, campaignRecipientPer
 import { validateTemplateInput } from "./template-service";
 import {
   CAMPAIGN_IMPORT_COLUMNS,
+  EMAIL_CAMPAIGN_IMPORT_COLUMNS,
   campaignImportCsvHeader,
   campaignImportHeaderRow,
   extractTemplateVariables,
   insertTemplateVariableAtSelection,
   TEMPLATE_VARIABLE_KEYS,
+  templateVariablesForChannel,
 } from "../shared/template-variables";
 
 describe("variáveis homologadas de template", () => {
@@ -25,6 +27,7 @@ describe("variáveis homologadas de template", () => {
     "E-mail de contato do credor": "COBRANCA@CREDOR.COM.BR",
     Link: "https://credor.example/negociar/CTR-2026-001",
   };
+  const validEmailRow = { ...validRow, "E-mail do cliente": "CLIENTE@EXAMPLE.COM.BR" };
 
   it("preserva nome, versão, assunto, conteúdo e variáveis ao vincular o template à campanha", () => {
     expect(campaignTemplateSnapshotValues({
@@ -42,9 +45,16 @@ describe("variáveis homologadas de template", () => {
     });
   });
 
-  it.each(["SMS", "EMAIL", "WHATSAPP", "RCS"] as const)("mantém o seletor alinhado ao layout de %s", channel => {
+  it.each(["SMS", "WHATSAPP", "RCS"] as const)("mantém o layout padrão de nove colunas em %s", channel => {
     expect(campaignImportLayout(channel).columns).toEqual(CAMPAIGN_IMPORT_COLUMNS);
     expect(campaignImportLayout(channel).filename).toBe("modelo-spc-informa.csv");
+  });
+
+  it("adiciona somente em E-mail a décima coluna obrigatória do destinatário", () => {
+    expect(campaignImportLayout("EMAIL").columns).toEqual(EMAIL_CAMPAIGN_IMPORT_COLUMNS);
+    expect(campaignImportLayout("EMAIL").filename).toBe("modelo-spc-informa-email.csv");
+    expect(templateVariablesForChannel("EMAIL").map(item => item.key)).toContain("email_cliente");
+    expect(templateVariablesForChannel("SMS").map(item => item.key)).not.toContain("email_cliente");
   });
 
   it("gera o CSV e a primeira linha do XLSX com as mesmas nove colunas na ordem canônica", () => {
@@ -74,10 +84,12 @@ describe("variáveis homologadas de template", () => {
   it("aceita as variáveis homologadas e rejeita variáveis ausentes da planilha", () => {
     expect(() => validateTemplateInput("SMS", null, "Olá {{nome_cliente}}, valor {{valor}} com {{nome_credor}}. {{link}}")).not.toThrow();
     expect(() => validateTemplateInput("SMS", null, "Olá {{nome}}.")).toThrow(/Variáveis não disponíveis: \{\{nome\}\}/);
+    expect(() => validateTemplateInput("EMAIL", "Contato {{email_cliente}}", "Olá {{nome_cliente}}.")).not.toThrow();
+    expect(() => validateTemplateInput("SMS", null, "Contato {{email_cliente}}.")).toThrow(/Variáveis não disponíveis/);
   });
 
-  it("expõe exatamente as nove variáveis do layout padrão", () => {
-    expect(TEMPLATE_VARIABLE_KEYS).toEqual(["cpf", "nome_cliente", "nome_credor", "valor", "data_vencimento", "numero_contrato", "telefone_credor", "email_credor", "link"]);
+  it("expõe as nove variáveis padrão e `email_cliente` exclusivo do layout de E-mail", () => {
+    expect(TEMPLATE_VARIABLE_KEYS).toEqual(["cpf", "nome_cliente", "nome_credor", "valor", "data_vencimento", "numero_contrato", "telefone_credor", "email_credor", "link", "email_cliente"]);
   });
 
   it("normaliza e grava valores canônicos para personalização e persistência", () => {
@@ -86,6 +98,7 @@ describe("variáveis homologadas de template", () => {
     expect(normalized).toMatchObject({
       cpf: "52998224725",
       customerName: "Ana Maria",
+      customerEmail: "",
       creditorName: "Credor Brasil",
       amountCents: 123456,
       dueDate: "2026-12-31",
@@ -104,10 +117,12 @@ describe("variáveis homologadas de template", () => {
       telefone_credor: "1140001234",
       email_credor: "cobranca@credor.com.br",
       link: "https://credor.example/negociar/CTR-2026-001",
+      email_cliente: "",
     });
     expect(campaignRecipientPersistenceValues(normalized)).toEqual({
       cpf: "52998224725",
       customerName: "Ana Maria",
+      customerEmail: "",
       creditorName: "Credor Brasil",
       amountCents: 123456,
       dueDate: "2026-12-31",
@@ -118,10 +133,11 @@ describe("variáveis homologadas de template", () => {
     });
   });
 
-  it("materializa no schema os nove campos persistidos por destinatário", () => {
+  it("materializa no schema os dez campos persistidos por destinatário", () => {
     expect(Object.keys(getTableColumns(campaignRecipients))).toEqual(expect.arrayContaining([
       "cpfCiphertext",
       "customerNameCiphertext",
+      "customerEmailCiphertext",
       "creditorNameCiphertext",
       "amountCents",
       "dueDate",
@@ -139,6 +155,17 @@ describe("variáveis homologadas de template", () => {
     expect(() => assertCampaignImportColumns(missingCpf)).toThrow(/faltando: CPF/);
     expect(() => assertCampaignImportColumns({ ...validRow, Observação: "extra" })).toThrow(/não permitidas: Observação/);
     expect(() => assertCampaignImportColumns(Object.fromEntries(Object.entries(validRow).reverse()))).toThrow(/ordem das colunas diferente/);
+    expect(() => assertCampaignImportColumns(validRow, "EMAIL")).toThrow(/faltando: E-mail do cliente/);
+    expect(() => assertCampaignImportColumns(validEmailRow, "EMAIL")).not.toThrow();
+  });
+
+  it("normaliza e exige o e-mail do cliente somente no canal E-mail", () => {
+    const normalized = normalizeCampaignImportRow(validEmailRow, "EMAIL");
+    expect(normalized.errors).toEqual([]);
+    expect(normalized.customerEmail).toBe("cliente@example.com.br");
+    expect(normalized.variables.email_cliente).toBe("cliente@example.com.br");
+    expect(normalizeCampaignImportRow(validRow, "EMAIL").errors.map(error => error.code)).toContain("INVALID_CUSTOMER_EMAIL");
+    expect(normalizeCampaignImportRow(validRow, "SMS").errors.map(error => error.code)).not.toContain("INVALID_CUSTOMER_EMAIL");
   });
 
   it("retorna mensagens por campo quando uma linha possui dados inválidos", () => {

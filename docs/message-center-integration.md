@@ -40,4 +40,6 @@ A documentação pública não define assinatura HMAC nem timestamp no callback.
 
 ## Configuração operacional
 
-Após publicar a versão, a URL protegida do callback deverá ser cadastrada na plataforma Message Center em **Parâmetros → Chave de API / Callback**. Esse cadastro externo não pode ser automatizado pela API pública documentada e não será executado sem acesso autorizado à conta. O teste real de envio somente será feito após confirmação explícita do destinatário de homologação.
+O adaptador usa exclusivamente `customerEmail`/`E-mail do cliente` como `Destinatario`. `email_credor` permanece como contato/remetente e nunca é usado como destino do cliente. Campanhas recebidas pela API pública são criadas em `READY` e continuam dependentes de confirmação manual.
+
+Após publicar a versão, a URL protegida `https://<domínio>/api/webhooks/message-center/<brokerId>/<token>` deverá ser cadastrada na plataforma Message Center em **Parâmetros → Chave de API / Callback**. Esse cadastro externo não pode ser automatizado pela API pública documentada e não será executado sem acesso autorizado à conta. O teste real de envio somente será feito após confirmação explícita do destinatário de homologação.

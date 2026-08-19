@@ -7,6 +7,18 @@ import { campaignRecipients, campaigns, deliveryEvents, webhookReceipts } from "
 import { getBrokerForWebhook } from "./broker-service";
 import { refreshCampaign } from "./campaign-processing-service";
 import { getDb } from "./db";
+import { ENV } from "./_core/env";
+import { hmacToken } from "./security";
+import { isMessageCenterEndpoint } from "./message-center-adapter";
+import {
+  mapMessageCenterEvent,
+  messageCenterBatchItems,
+  messageCenterCallbackEvent,
+  messageCenterCallbackToken,
+  messageCenterExternalEventId,
+  messageCenterOccurredAt,
+  validMessageCenterCallbackToken,
+} from "./message-center-callback";
 
 const webhookPayload = z.object({
   eventId: z.union([z.string(), z.number()]).transform(String),
@@ -109,6 +121,106 @@ async function brokerWebhook(req: Request, res: Response) {
   }
 }
 
+async function messageCenterWebhook(req: Request, res: Response) {
+  const db = await getDb();
+  if (!db) return res.status(503).json({ error: "database-unavailable" });
+  const brokerId = Number(req.params.brokerId);
+  if (!Number.isInteger(brokerId) || brokerId < 1) return res.status(400).json({ error: "invalid-broker" });
+  const broker = await getBrokerForWebhook(brokerId);
+  if (!broker || !isMessageCenterEndpoint(broker.baseUrl)) return res.status(404).json({ error: "message-center-broker-not-found" });
+  const apiKey = broker.credentials.apiKey;
+  if (!apiKey || !ENV.cookieSecret) return res.status(503).json({ error: "callback-security-unavailable" });
+  const expectedToken = messageCenterCallbackToken(broker.id, apiKey, ENV.cookieSecret);
+  if (!validMessageCenterCallbackToken(String(req.params.token ?? ""), expectedToken)) return res.status(401).json({ error: "invalid-callback-token" });
+  if (req.method === "GET" || !req.body || (typeof req.body === "object" && !Array.isArray(req.body) && Object.keys(req.body).length === 0)) {
+    return res.json({ ok: true, provider: "message-center" });
+  }
+  let rawEvents: unknown[];
+  try { rawEvents = messageCenterBatchItems(req.body); }
+  catch { return res.status(413).json({ error: "invalid-batch-size" }); }
+  let processed = 0;
+  let duplicates = 0;
+  let ignored = 0;
+  let rejected = 0;
+  for (const rawEvent of rawEvents) {
+    const parsed = messageCenterCallbackEvent.safeParse(rawEvent);
+    if (!parsed.success) {
+      rejected += 1;
+      continue;
+    }
+    const payload = parsed.data;
+    if (payload.MetodoEnvio && normalizedChannel(payload.MetodoEnvio) !== "EMAIL") {
+      ignored += 1;
+      continue;
+    }
+    const mapped = mapMessageCenterEvent(payload);
+    if (!mapped) {
+      ignored += 1;
+      continue;
+    }
+    const externalEventId = messageCenterExternalEventId(broker.id, payload, mapped.eventType);
+    const digest = createHash("sha256").update(JSON.stringify(rawEvent)).digest("hex");
+    const [existing] = await db.select({ id: webhookReceipts.id }).from(webhookReceipts).where(eq(webhookReceipts.externalEventId, externalEventId)).limit(1);
+    if (existing) {
+      duplicates += 1;
+      continue;
+    }
+    let receiptId = 0;
+    try {
+      const inserted = await db.insert(webhookReceipts).values({ brokerId: broker.id, externalEventId, requestDigest: digest, signatureValid: true, status: "RECEIVED" });
+      receiptId = Number(inserted[0].insertId);
+    } catch {
+      duplicates += 1;
+      continue;
+    }
+    try {
+      const recipientId = Number(payload.Identificador);
+      if (!Number.isSafeInteger(recipientId) || recipientId < 1) throw new Error("Identificador do destinatário inválido.");
+      const [recipient] = await db.select().from(campaignRecipients).where(eq(campaignRecipients.id, recipientId)).limit(1);
+      if (!recipient) throw new Error("Destinatário não encontrado.");
+      const [campaign] = await db.select().from(campaigns).where(and(eq(campaigns.id, recipient.campaignId), eq(campaigns.brokerId, broker.id), eq(campaigns.channel, "EMAIL"))).limit(1);
+      if (!campaign) throw new Error("Campanha incompatível com o broker Message Center.");
+      if (payload.CampoCustomizado1 && payload.CampoCustomizado1 !== campaign.id) throw new Error("Campanha divergente no callback.");
+      if (payload.Destinatario) {
+        const expectedFingerprint = hmacToken(`${campaign.organizationId}:EMAIL:${payload.Destinatario.trim().toLowerCase()}`, ENV.cookieSecret);
+        if (!sameHex(recipient.destinationFingerprint, expectedFingerprint)) throw new Error("Destinatário divergente no callback.");
+      }
+      const nextStatus = mapped.status ? nextRecipientStatus(recipient.status, mapped.status) : recipient.status;
+      if (nextStatus !== recipient.status || payload.IdCall !== recipient.brokerMessageId) {
+        await db.update(campaignRecipients).set({
+          status: nextStatus,
+          brokerMessageId: payload.IdCall,
+          deliveredAt: nextStatus === "DELIVERED" ? messageCenterOccurredAt(payload.DataEvento) : recipient.deliveredAt,
+          errorCode: nextStatus === "FAILED" ? "MESSAGE_CENTER_DELIVERY_FAILED" : nextStatus === "SENT" || nextStatus === "DELIVERED" ? null : recipient.errorCode,
+        }).where(eq(campaignRecipients.id, recipient.id));
+      }
+      await db.insert(deliveryEvents).values({
+        organizationId: campaign.organizationId,
+        campaignId: campaign.id,
+        recipientId: recipient.id,
+        brokerId: broker.id,
+        externalEventId,
+        eventType: mapped.eventType,
+        occurredAt: messageCenterOccurredAt(payload.DataEvento),
+        payloadDigest: digest,
+      });
+      await refreshCampaign(campaign.id);
+      await db.update(webhookReceipts).set({ status: "PROCESSED", processedAt: new Date() }).where(eq(webhookReceipts.id, receiptId));
+      processed += 1;
+    } catch {
+      await db.update(webhookReceipts).set({ status: "REJECTED", processedAt: new Date() }).where(eq(webhookReceipts.id, receiptId));
+      rejected += 1;
+    }
+  }
+  return res.json({ ok: true, processed, duplicates, ignored, rejected });
+}
+
+function normalizedChannel(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase().replace("E-MAIL", "EMAIL");
+}
+
 export function registerBrokerWebhookRoutes(app: Express) {
   app.post("/api/webhooks/brokers/:brokerId", express.raw({ type: "application/json", limit: "1mb" }), brokerWebhook);
+  app.get("/api/webhooks/message-center/:brokerId/:token", messageCenterWebhook);
+  app.post("/api/webhooks/message-center/:brokerId/:token", express.json({ type: "application/json", limit: "1mb" }), messageCenterWebhook);
 }

@@ -73,3 +73,30 @@ export async function revokeApiKey(actor: DomainActor, id: number) {
   await writeAudit({ organizationId: key[0].organizationId, actorUserId: actor.id, action: "API_KEY_REVOKED", resourceType: "api_key", resourceId: id });
   return { success: true as const };
 }
+
+export async function authenticateApiKey(rawKey: string, requiredScope: string) {
+  const key = rawKey.trim();
+  if (!key.startsWith("ntf_") || key.length < 32) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Chave de API inválida." });
+  }
+  const db = await requireDb();
+  const [record] = await db
+    .select({
+      id: apiKeys.id,
+      organizationId: apiKeys.organizationId,
+      createdByUserId: apiKeys.createdByUserId,
+      scopes: apiKeys.scopes,
+      expiresAt: apiKeys.expiresAt,
+    })
+    .from(apiKeys)
+    .where(and(eq(apiKeys.secretHash, sha256(key)), isNull(apiKeys.revokedAt)))
+    .limit(1);
+  if (!record || (record.expiresAt && record.expiresAt <= new Date())) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Chave de API inválida, revogada ou expirada." });
+  }
+  if (!record.scopes.includes(requiredScope)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: `A chave não possui o escopo ${requiredScope}.` });
+  }
+  await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, record.id));
+  return record;
+}

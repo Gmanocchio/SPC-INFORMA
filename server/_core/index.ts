@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerBrokerWebhookRoutes } from "../webhook-routes";
 import { registerScheduledRoutes } from "../scheduled-routes";
 import { isTrustedMutationOrigin } from "../http-security";
+import { registerPublicApiRoutes } from "../public-api-routes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -51,6 +52,7 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "15mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
+  registerPublicApiRoutes(app);
   registerScheduledRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);

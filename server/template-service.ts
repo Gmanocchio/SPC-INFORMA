@@ -6,6 +6,7 @@ import {
   extractTemplateVariables,
   findUnsupportedTemplateVariables,
   TEMPLATE_VARIABLE_KEYS,
+  templateVariablesForChannel,
 } from "../shared/template-variables";
 import { writeAudit } from "./audit";
 import { getDb } from "./db";
@@ -47,11 +48,12 @@ export function validateTemplateInput(channel: Channel, subject: string | null |
   if (channel === "SMS" && content.length > 612) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "O template SMS excede o limite operacional de 612 caracteres." });
   }
-  const unsupported = findUnsupportedTemplateVariables(subject, content);
+  const unsupported = findUnsupportedTemplateVariables(subject, content, channel);
   if (unsupported.length) {
+    const allowedKeys = templateVariablesForChannel(channel).map(variable => variable.key);
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Variáveis não disponíveis: ${unsupported.map(variable => `{{${variable}}}`).join(", ")}. Utilize: ${TEMPLATE_VARIABLE_KEYS.map(variable => `{{${variable}}}`).join(", ")}.`,
+      message: `Variáveis não disponíveis: ${unsupported.map(variable => `{{${variable}}}`).join(", ")}. Utilize: ${allowedKeys.map(variable => `{{${variable}}}`).join(", ")}.`,
     });
   }
 }
