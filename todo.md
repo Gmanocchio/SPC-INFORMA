@@ -318,7 +318,7 @@
 - [x] Validar TypeScript, suíte Vitest, build e ausência de regressões nos demais canais e brokers (249 testes aprovados, 1 ignorado)
 - [x] Executar exatamente uma nova tentativa real autorizada com template t0001 e os mesmos destinatário, remetente e credor confirmados (Message Center respondeu HTTP 500)
 - [x] Registrar o status e a resposta segura da nova tentativa, sem identificador de aceite e sem retry automático
-- [ ] Concluir a validação, salvar checkpoint e atualizar o backup GitHub da integração Message Center
+- [x] Concluir a validação, salvar checkpoint e atualizar o backup GitHub da integração Message Center (252 testes aprovados, 2 ignorados, build concluído; GitHub main/branch/tag verificados)
 - [x] Realizar somente após confirmação um teste real controlado e registrar a configuração operacional (duas tentativas autorizadas, ambas HTTP 500 e sem identificador de aceite)
 - [x] Auditar estado Git local, conteúdo remoto e arquivos sensíveis antes do backup
 - [x] Preparar um snapshot completo da última versão em branch de backup sem reescrever o remoto
